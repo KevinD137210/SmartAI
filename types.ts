@@ -11,6 +11,10 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   category: string;
+  // New fields for detailed tracking
+  merchant?: string;
+  items?: string;
+  location?: string;
 }
 
 export interface InvoiceItem {
@@ -66,6 +70,7 @@ export interface Invoice {
   discount?: number;
   depositPercentage?: number;
   progressPaymentPercentage?: number;
+  acceptancePaymentPercentage?: number;
 }
 
 export interface UserProfile {
@@ -77,8 +82,10 @@ export interface UserProfile {
   taxId: string;
   depositPercentage: number;
   secondPaymentPercentage: number;
+  acceptancePaymentPercentage?: number;
   logo?: string; // Base64 string for logo image
   signature?: string; // Base64 string for signature image
+  defaultTerms?: string;
 }
 
 export interface PriceCheckResult {

@@ -354,7 +354,7 @@ export const Clients: React.FC<ClientsProps> = ({ clients, projects = [], onAdd,
                              {t('client.manageProjects')}
                           </h3>
                           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                              For {selectedClientForProjects.name}
+                              {t('client.for')} {selectedClientForProjects.name}
                           </p>
                       </div>
                       <button onClick={() => setIsProjectModalOpen(false)} className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500">
@@ -390,11 +390,11 @@ export const Clients: React.FC<ClientsProps> = ({ clients, projects = [], onAdd,
                                           value={newProject.description}
                                           onChange={e => setNewProject({...newProject, description: e.target.value})}
                                           className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
-                                          placeholder="Project details..."
+                                          placeholder={t('proj.details')}
                                       />
                                   </div>
                                   <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all">
-                                      Create Project
+                                      {t('client.createQuote')}
                                   </button>
                               </form>
                           </div>

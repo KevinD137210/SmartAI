@@ -14,7 +14,8 @@ const defaultProfile: UserProfile = {
   phone: '+1 234 567 890',
   taxId: '',
   depositPercentage: 30,
-  secondPaymentPercentage: 70
+  secondPaymentPercentage: 40,
+  acceptancePaymentPercentage: 30
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

@@ -205,7 +205,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
                 <div className="p-2.5 rounded-xl bg-pink-500/10 text-pink-500 group-hover:scale-110 transition-transform">
                     <ShoppingBag size={20} />
                 </div>
-                <span className="text-[11px] font-bold text-slate-400 text-center leading-tight">Item Price<br/>Lookup</span>
+                <span className="text-[11px] font-bold text-slate-400 text-center leading-tight">{t('dash.itemPriceLookup')}</span>
             </Link>
 
             <Link to="/calendar" className="flex flex-col items-center justify-center gap-2 bg-[#111827] hover:bg-[#1f2937] border border-slate-800 rounded-2xl py-4 transition-all group">
@@ -251,8 +251,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
                      <FileText size={32} className="text-slate-600" />
                  </div>
                  <p className="text-slate-500 font-medium">
-                     {listMode === 'INVALID' ? 'No invalid/expired quotes found.' : 
-                      listMode === 'INVOICES' ? 'No invoices issued yet.' :
+                     {listMode === 'INVALID' ? t('dash.noInvalid') : 
+                      listMode === 'INVOICES' ? t('dash.noInvoices') :
                       t('dash.createFirst')}
                  </p>
              </div>
@@ -302,17 +302,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
                                     isExpired ? (
                                         <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-900/30 rounded-lg text-rose-400 text-xs font-bold border border-rose-900/50">
                                             <AlertCircle size={12} />
-                                            <span>Expired</span>
+                                            <span>{t('dash.expired')}</span>
                                         </div>
                                     ) : (
                                         <div className="text-right">
-                                            <div className="text-xs text-emerald-400 font-bold">{daysRemaining} days left</div>
-                                            <div className="text-[10px] text-slate-500">Validity</div>
+                                            <div className="text-xs text-emerald-400 font-bold">{daysRemaining} {t('dash.daysLeft')}</div>
+                                            <div className="text-[10px] text-slate-500">{t('dash.validity')}</div>
                                         </div>
                                     )
                                 ) : (
                                     <div className="px-3 py-1 bg-slate-800 rounded-lg text-slate-400 text-xs font-bold">
-                                        Draft
+                                        {t('inv.draft')}
                                     </div>
                                 )
                             ) : (

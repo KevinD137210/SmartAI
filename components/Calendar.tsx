@@ -179,7 +179,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdate
         return (
             <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                 <CalendarIcon size={48} className="mb-4 opacity-50" />
-                <p>{t('cal.noEvents') || 'No events this month'}</p>
+                <p>{t('cal.noEvents')}</p>
             </div>
         );
     }

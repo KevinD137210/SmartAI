@@ -80,7 +80,7 @@ const PageHeader: React.FC<{title?: string, subtitle?: string}> = ({ title, subt
     if (!title) return null;
   
     return (
-      <header className="hidden md:block sticky top-0 z-30 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-xl px-4 md:px-8 py-6 mb-6 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors duration-300">
+      <header className="hidden lg:block sticky top-0 z-30 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-xl px-4 md:px-8 py-6 mb-6 border-b border-slate-200/50 dark:border-slate-800/50 transition-colors duration-300">
          <div className="flex flex-col animate-fadeIn">
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight font-orbitron">{title}</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">{subtitle}</p>
@@ -226,7 +226,8 @@ const MainLayout: React.FC = () => {
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-hidden transition-colors duration-300">
         {/* Sidebar Navigation (Desktop) - Floating Island Style */}
-        <aside className="hidden md:flex flex-col w-72 p-6">
+        {/* Changed from md:flex to lg:flex to provide better tablet experience with mobile menu */}
+        <aside className="hidden lg:flex flex-col w-72 p-6">
             <div className="flex flex-col h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-3xl shadow-2xl shadow-indigo-500/5">
                 {/* Redesigned Sidebar Header: Vertical Layout */}
                 <div className="flex flex-col items-center gap-5 px-6 py-10 border-b border-slate-100 dark:border-slate-800/50">
@@ -264,7 +265,8 @@ const MainLayout: React.FC = () => {
         </aside>
 
         {/* Mobile Header & Menu Overlay */}
-        <div className="md:hidden fixed inset-0 z-40 pointer-events-none">
+        {/* Changed from md:hidden to lg:hidden to show on tablets */}
+        <div className="lg:hidden fixed inset-0 z-40 pointer-events-none">
             {/* Header Bar */}
             <div className="pointer-events-auto absolute top-0 left-0 right-0 h-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 transition-colors duration-300 relative">
                  <div className="flex items-center gap-4 overflow-hidden z-10">
@@ -312,8 +314,9 @@ const MainLayout: React.FC = () => {
         </div>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto w-full pt-20 md:pt-0 relative">
-            <div className="md:h-full overflow-auto rounded-3xl no-scrollbar">
+        {/* Changed padding top breakpoint from md to lg */}
+        <main className="flex-1 overflow-y-auto w-full pt-20 lg:pt-0 relative">
+            <div className="min-h-full rounded-3xl">
                 {/* Global Page Header - Hidden on Mobile, Visible on Desktop */}
                 <PageHeader title={pageInfo?.title} subtitle={pageInfo?.subtitle} />
                 
@@ -330,7 +333,7 @@ const MainLayout: React.FC = () => {
                         <Route path="/invoices" element={
                             <Invoices 
                                 invoices={invoices} 
-                                clients={clients}
+                                clients={clients} 
                                 projects={projects}
                                 onSaveInvoice={saveInvoice} 
                                 onDeleteInvoice={deleteInvoice} 

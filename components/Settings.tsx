@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Save, User, Building, MapPin, Mail, Phone, CreditCard, CheckCircle, Image as ImageIcon, Upload, X, PenTool } from 'lucide-react';
+import { Save, User, Building, MapPin, Mail, Phone, CreditCard, CheckCircle, Image as ImageIcon, Upload, X, PenTool, Globe } from 'lucide-react';
 
 export const Settings: React.FC = () => {
   const { profile, updateProfile } = useSettings();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const [formData, setFormData] = useState(profile);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -43,21 +43,47 @@ export const Settings: React.FC = () => {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
+  const totalPercentage = (formData.depositPercentage || 0) + (formData.secondPaymentPercentage || 0) + (formData.acceptancePaymentPercentage || 0);
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-10">
       <form onSubmit={handleSubmit} className="space-y-8">
         
+        {/* Language Section */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-800">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                <Globe className="text-blue-500" size={24} />
+                {t('set.language')}
+            </h3>
+            <div className="flex gap-4 flex-col sm:flex-row">
+                <button
+                    type="button"
+                    onClick={() => setLanguage('en')}
+                    className={`flex-1 py-4 px-6 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${language === 'en' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'border-slate-100 dark:border-slate-800 text-slate-500 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                >
+                    <span className="text-2xl">🇺🇸</span> {t('set.lang.en')}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setLanguage('zh-TW')}
+                    className={`flex-1 py-4 px-6 rounded-2xl font-bold transition-all border-2 flex items-center justify-center gap-2 ${language === 'zh-TW' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'border-slate-100 dark:border-slate-800 text-slate-500 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                >
+                    <span className="text-2xl">🇹🇼</span> {t('set.lang.zh')}
+                </button>
+            </div>
+        </div>
+
         {/* Branding & Signature Section */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-800">
              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
                 <ImageIcon className="text-purple-500" size={24} />
-                Branding & Signature
+                {t('set.branding')}
              </h3>
              
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                  {/* Logo Upload */}
                  <div className="space-y-3">
-                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Company Logo</label>
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.companyLogo')}</label>
                      <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50 min-h-[160px] relative">
                          {formData.logo ? (
                              <>
@@ -73,8 +99,8 @@ export const Settings: React.FC = () => {
                          ) : (
                              <>
                                 <Upload className="text-slate-300 dark:text-slate-500 mb-2" size={32} />
-                                <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">Upload Logo</span>
-                                <span className="text-xs text-slate-400 mt-1">PNG, JPG (Max 2MB)</span>
+                                <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t('set.uploadLogo')}</span>
+                                <span className="text-xs text-slate-400 mt-1">{t('set.logoFormat')}</span>
                              </>
                          )}
                          <input 
@@ -88,7 +114,7 @@ export const Settings: React.FC = () => {
 
                  {/* Signature Upload */}
                  <div className="space-y-3">
-                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Signature</label>
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.signature')}</label>
                      <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50 min-h-[160px] relative">
                          {formData.signature ? (
                              <>
@@ -104,8 +130,8 @@ export const Settings: React.FC = () => {
                          ) : (
                              <>
                                 <PenTool className="text-slate-300 dark:text-slate-500 mb-2" size={32} />
-                                <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">Upload Signature</span>
-                                <span className="text-xs text-slate-400 mt-1">Transparent PNG recommended</span>
+                                <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t('set.uploadSignature')}</span>
+                                <span className="text-xs text-slate-400 mt-1">{t('set.sigFormat')}</span>
                              </>
                          )}
                          <input 
@@ -219,7 +245,7 @@ export const Settings: React.FC = () => {
             {t('set.financial')}
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.deposit')}</label>
               <div className="relative">
@@ -251,13 +277,29 @@ export const Settings: React.FC = () => {
                 <span className="absolute right-4 top-3.5 text-slate-400 font-bold">%</span>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.acceptance')}</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  name="acceptancePaymentPercentage"
+                  value={formData.acceptancePaymentPercentage || 0}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-mono"
+                />
+                <span className="absolute right-4 top-3.5 text-slate-400 font-bold">%</span>
+              </div>
+            </div>
           </div>
           
            <div className="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-sm text-indigo-700 dark:text-indigo-300">
                 <div className="flex justify-between items-center font-bold">
-                    <span>Total: {formData.depositPercentage + formData.secondPaymentPercentage}%</span>
-                    {formData.depositPercentage + formData.secondPaymentPercentage !== 100 && (
-                        <span className="text-rose-500">Warning: Total does not equal 100%</span>
+                    <span>{t('set.total')}: {totalPercentage}%</span>
+                    {totalPercentage !== 100 && (
+                        <span className="text-rose-500">{t('set.warning')}</span>
                     )}
                 </div>
            </div>

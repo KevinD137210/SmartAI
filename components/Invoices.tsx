@@ -39,19 +39,19 @@ const EmptyInvoice: Invoice = {
 };
 
 const TRANSLATION_OPTIONS = [
-    { code: 'en-US', label: 'USA English', flag: '🇺🇸' },
-    { code: 'zh-TW', label: 'Traditional Chinese', flag: '🇹🇼' },
-    { code: 'ja-JP', label: 'Japanese', flag: '🇯🇵' },
-    { code: 'ko-KR', label: 'Korean', flag: '🇰🇷' },
-    { code: 'zh-CN', label: 'Simplified Chinese', flag: '🇨🇳' },
-    { code: 'en-EU', label: 'EU English', flag: '🇪🇺' },
+    { code: 'en-US', label: 'USA', flag: '🇺🇸' },
+    { code: 'zh-TW', label: 'TWN', flag: '🇹🇼' },
+    { code: 'ja-JP', label: 'JPN', flag: '🇯🇵' },
+    { code: 'ko-KR', label: 'KOR', flag: '🇰🇷' },
+    { code: 'zh-CN', label: 'CHN', flag: '🇨🇳' },
+    { code: 'en-EU', label: 'EUR', flag: '🇪🇺' },
 ];
 
 const CURRENCY_OPTIONS = ['USD', 'TWD', 'JPY', 'KRW', 'CNY', 'EUR', 'HKD', 'SGD'];
 
 export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], projects = [], onSaveInvoice, onDeleteInvoice, onUpdateStatus, onArchiveClient, onUpdateProject }) => {
   const { t, language } = useLanguage(); 
-  const { profile } = useSettings();
+  const { profile, updateProfile } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
   const [view, setView] = useState<'LIST' | 'EDIT' | 'PREVIEW'>('LIST');
@@ -97,7 +97,8 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                 // Initialize with profile defaults if available
                 depositPercentage: profile.depositPercentage,
                 progressPaymentPercentage: 0,
-                docLanguage: language === 'zh-TW' ? 'zh-TW' : 'en-US'
+                docLanguage: language === 'zh-TW' ? 'zh-TW' : 'en-US',
+                notes: profile.defaultTerms || ''
             };
             
             setCurrentInvoice(newInvoice);
@@ -134,7 +135,8 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
       clientEmail: client ? client.email : '',
       items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }],
       depositPercentage: profile.depositPercentage,
-      docLanguage: language === 'zh-TW' ? 'zh-TW' : 'en-US'
+      docLanguage: language === 'zh-TW' ? 'zh-TW' : 'en-US',
+      notes: profile.defaultTerms || ''
     });
     setView('EDIT');
   };
@@ -164,6 +166,15 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
 
   const handleSave = () => {
     const { total } = calculateFinancials();
+
+    // Save terms as default if present
+    if (currentInvoice.notes) {
+        updateProfile({
+            ...profile,
+            defaultTerms: currentInvoice.notes
+        });
+    }
+
     onSaveInvoice({ ...currentInvoice, total });
     setShowSaveSuccess(true);
     setTimeout(() => {
@@ -247,7 +258,8 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
   const handleGenerateTerms = async () => {
       if (!currentInvoice.docLanguage) return;
       setIsGeneratingTerms(true);
-      const terms = await generateTermsAndConditions(currentInvoice.docLanguage, currentInvoice.type);
+      // Pass user profile address to improve jurisdiction detection
+      const terms = await generateTermsAndConditions(currentInvoice.docLanguage, currentInvoice.type, profile.address);
       
       // Append if there are existing notes, otherwise set
       setCurrentInvoice(prev => ({
@@ -283,8 +295,6 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
       }
   };
 
-  // ... (Keep existing Email and Print functions logic as is) ...
-  // [Truncated for brevity, assuming standard functions from previous context remain available in the component closure]
   const filteredClients = clients.filter(c => 
     c.status !== 'ARCHIVED' && 
     (c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) || 
@@ -459,7 +469,6 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                             </div>
                          </div>
                          
-                         {/* Removed Due Date input, making Date input full width in its column */}
                          <div className="space-y-4">
                             <div>
                                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.date')}</label>
@@ -499,10 +508,12 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                             <select 
                                                 value={translationLang}
                                                 onChange={(e) => setTranslationLang(e.target.value)}
-                                                className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 py-1 pl-2 pr-1 outline-none cursor-pointer appearance-none"
+                                                className="bg-transparent text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 py-1 w-12 text-center outline-none cursor-pointer appearance-none"
                                             >
                                                 {TRANSLATION_OPTIONS.map(opt => (
-                                                    <option key={opt.code} value={opt.code}>{opt.label}</option>
+                                                    <option key={opt.code} value={opt.code} className="bg-white dark:bg-slate-800 text-left">
+                                                        {opt.label} {opt.flag}
+                                                    </option>
                                                 ))}
                                             </select>
                                             <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
@@ -527,10 +538,12 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                             <select 
                                                 value={translationLang}
                                                 onChange={(e) => setTranslationLang(e.target.value)}
-                                                className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 py-1 pl-2 pr-1 outline-none cursor-pointer appearance-none"
+                                                className="bg-transparent text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 py-1 w-12 text-center outline-none cursor-pointer appearance-none"
                                             >
                                                 {TRANSLATION_OPTIONS.map(opt => (
-                                                    <option key={opt.code} value={opt.code}>{opt.label}</option>
+                                                    <option key={opt.code} value={opt.code} className="bg-white dark:bg-slate-800 text-left">
+                                                        {opt.label} {opt.flag}
+                                                    </option>
                                                 ))}
                                             </select>
                                             <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
@@ -586,8 +599,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                     
                     {/* Notes Area */}
                     <div className="pt-4">
-                        <div className="flex justify-between items-end mb-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('inv.notes')}</label>
+                        <div className="flex justify-end items-end mb-2">
                             <button
                                 onClick={handleGenerateTerms}
                                 disabled={isGeneratingTerms}
@@ -603,16 +615,18 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                 value={currentInvoice.notes || ''}
                                 onChange={(e) => setCurrentInvoice({...currentInvoice, notes: e.target.value})}
                                 className="w-full pl-4 pr-32 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
-                                placeholder="Add payment terms or additional notes..."
+                                placeholder={t('inv.notesPlaceholder')}
                             />
                             <div className="absolute right-1 top-2 flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
                                 <select 
                                     value={translationLang}
                                     onChange={(e) => setTranslationLang(e.target.value)}
-                                    className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 py-1 pl-2 pr-1 outline-none cursor-pointer appearance-none"
+                                    className="bg-transparent text-[10px] md:text-xs font-bold text-slate-600 dark:text-slate-300 py-1 w-12 text-center outline-none cursor-pointer appearance-none"
                                 >
                                     {TRANSLATION_OPTIONS.map(opt => (
-                                        <option key={opt.code} value={opt.code}>{opt.label}</option>
+                                        <option key={opt.code} value={opt.code} className="bg-white dark:bg-slate-800 text-left">
+                                            {opt.label} {opt.flag}
+                                        </option>
                                     ))}
                                 </select>
                                 <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
@@ -635,24 +649,24 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                 <div className="bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-800 text-white overflow-hidden relative">
                      <div className="flex items-center gap-2 mb-6">
                          <CreditCard className="text-emerald-400" size={20} />
-                         <h3 className="font-bold text-lg tracking-wide">FINANCIALS</h3>
+                         <h3 className="font-bold text-lg tracking-wide">{t('set.financial')}</h3>
                      </div>
                      
                      {/* Quote Mode Toggle */}
                      <div className="mb-6">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">QUOTE MODE</label>
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">{t('inv.quoteMode')}</label>
                          <div className="flex bg-slate-800 rounded-xl p-1">
                              <button 
                                 onClick={() => setCurrentInvoice({...currentInvoice, quoteMode: 'COMPANY'})}
                                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${currentInvoice.quoteMode === 'COMPANY' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                              >
-                                 <Building size={14} /> Company
+                                 <Building size={14} /> {t('inv.modeCompany')}
                              </button>
                              <button 
                                 onClick={() => setCurrentInvoice({...currentInvoice, quoteMode: 'INDIVIDUAL'})}
                                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${currentInvoice.quoteMode === 'INDIVIDUAL' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                              >
-                                 <User size={14} /> Individual
+                                 <User size={14} /> {t('inv.modeIndividual')}
                              </button>
                          </div>
                      </div>
@@ -661,7 +675,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                      <div className="grid grid-cols-2 gap-4 mb-6">
                         <div>
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
-                                 Doc Language 
+                                 {t('inv.docLanguage')}
                              </label>
                              <div className="flex gap-2">
                                  <select
@@ -670,7 +684,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                      className="w-full bg-slate-800 text-white text-sm font-bold rounded-xl px-3 py-2.5 border border-slate-700 outline-none appearance-none"
                                  >
                                      {TRANSLATION_OPTIONS.map(opt => (
-                                         <option key={opt.code} value={opt.code}>{opt.label}</option>
+                                         <option key={opt.code} value={opt.code} className="bg-slate-800">{opt.label} {opt.flag}</option>
                                      ))}
                                  </select>
                                  <button 
@@ -684,14 +698,14 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                              </div>
                         </div>
                         <div>
-                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Currency</label>
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">{t('inv.currency')}</label>
                              <select
                                  value={currentInvoice.currency}
                                  onChange={(e) => setCurrentInvoice({...currentInvoice, currency: e.target.value})}
                                  className="w-full bg-slate-800 text-white text-sm font-bold rounded-xl px-3 py-2.5 border border-slate-700 outline-none appearance-none"
                              >
                                  {CURRENCY_OPTIONS.map(c => (
-                                     <option key={c} value={c}>{c}</option>
+                                     <option key={c} value={c} className="bg-slate-800">{c}</option>
                                  ))}
                              </select>
                         </div>
@@ -700,7 +714,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                      {/* Financial Inputs */}
                      <div className="space-y-4 mb-8">
                          <div className="flex justify-between items-center">
-                             <label className="text-sm text-slate-400 font-medium">Tax Rate (%)</label>
+                             <label className="text-sm text-slate-400 font-medium">{t('inv.taxRate')}</label>
                              <input 
                                 type="number" 
                                 min="0" 
@@ -710,7 +724,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                              />
                          </div>
                          <div className="flex justify-between items-center">
-                             <label className="text-sm text-slate-400 font-medium">Discount</label>
+                             <label className="text-sm text-slate-400 font-medium">{t('inv.discount')}</label>
                              <input 
                                 type="number" 
                                 min="0" 
@@ -720,7 +734,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                              />
                          </div>
                          <div className="flex justify-between items-center">
-                             <label className="text-sm text-slate-400 font-medium">Deposit (%)</label>
+                             <label className="text-sm text-slate-400 font-medium">{t('inv.depositPercent')}</label>
                              <div className="flex items-center gap-2">
                                  <span className="text-xs text-slate-500">%</span>
                                  <input 
@@ -734,7 +748,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                              </div>
                          </div>
                          <div className="flex justify-between items-center">
-                             <label className="text-sm text-slate-400 font-medium">Progress Payment (%)</label>
+                             <label className="text-sm text-slate-400 font-medium">{t('inv.progressPercent')}</label>
                              <div className="flex items-center gap-2">
                                  <span className="text-xs text-slate-500">%</span>
                                  <input 
@@ -752,10 +766,10 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                      {/* Grand Total */}
                      <div className="pt-6 border-t border-slate-800">
                          <div className="flex justify-between items-end">
-                             <span className="text-slate-400 font-bold text-lg">Total</span>
+                             <span className="text-slate-400 font-bold text-lg">{t('inv.total')}</span>
                              <div className="text-right">
                                  <div className="text-3xl font-bold text-white">{currentInvoice.currency} {total.toLocaleString()}</div>
-                                 {currentInvoice.taxRate > 0 && <div className="text-xs text-slate-500 mt-1">Includes Tax</div>}
+                                 {currentInvoice.taxRate > 0 && <div className="text-xs text-slate-500 mt-1">{t('inv.includesTax')}</div>}
                              </div>
                          </div>
                      </div>
@@ -794,7 +808,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             </div>
         )}
 
-        {/* Client Selector Modal (Same as before) */}
+        {/* Client Selector Modal */}
         {isClientSelectorOpen && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
                 <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[80vh]">
@@ -838,7 +852,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                             ))
                         ) : (
                             <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">
-                                No clients found
+                                {t('client.noData')}
                             </div>
                         )}
                     </div>
@@ -872,7 +886,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
     );
   }
 
-  // --- Print Preview Logic remains similar but updated to reflect new fields ---
+  // --- Print Preview Logic ---
   if (view === 'PREVIEW') {
      // Recalculate based on saved invoice (which now includes taxRate etc)
      const subtotal = currentInvoice.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
@@ -884,7 +898,6 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
      const balanceAmount = total - depositAmount;
 
      // Calculate Validity/Due Date
-     // If emailSentAt exists, use that + 15 days. Otherwise, use Issue Date + 15 days (Projected).
      const baseDate = currentInvoice.emailSentAt ? new Date(currentInvoice.emailSentAt) : new Date(currentInvoice.date);
      const dueDateObj = new Date(baseDate);
      dueDateObj.setDate(dueDateObj.getDate() + 15);
@@ -987,14 +1000,14 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                         
                         {discount > 0 && (
                              <div className="flex justify-between items-center text-sm text-rose-600">
-                                <span>Discount</span>
+                                <span>{t('inv.discount')}</span>
                                 <span>- {currentInvoice.currency} {discount.toLocaleString()}</span>
                             </div>
                         )}
                         
                         {taxAmount > 0 && (
                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-600">Tax ({currentInvoice.taxRate}%)</span>
+                                <span className="text-slate-600">{t('inv.tax')} ({currentInvoice.taxRate}%)</span>
                                 <span className="font-medium text-slate-900">{currentInvoice.currency} {taxAmount.toLocaleString()}</span>
                             </div>
                         )}
@@ -1038,7 +1051,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                             <div className="text-center">
                                 <img src={profile.signature} alt="Signature" className="h-20 object-contain mb-2 mx-auto" />
                                 <div className="border-t border-slate-300 w-48"></div>
-                                <p className="text-xs text-slate-400 mt-2 uppercase tracking-wider font-bold">Authorized Signature</p>
+                                <p className="text-xs text-slate-400 mt-2 uppercase tracking-wider font-bold">{t('inv.authorizedSignature')}</p>
                             </div>
                         </div>
                     )}
@@ -1083,11 +1096,11 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                     <FileText className="text-indigo-300 dark:text-indigo-600" size={48}/>
                 </div>
                 <p className="text-slate-400 dark:text-slate-500 font-medium">
-                    {filterProjectId ? 'No invoices or quotes found for this project.' : t('inv.noDocs')}
+                    {filterProjectId ? t('inv.noDocsProject') : t('inv.noDocs')}
                 </p>
                 {filterProjectId && (
                     <button onClick={handleCreateNew} className="mt-4 text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
-                        Create one now
+                        {t('inv.createOneNow')}
                     </button>
                 )}
             </div>
@@ -1100,7 +1113,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                             {inv.type === DocumentType.INVOICE ? t('inv.invoice') : t('inv.quotation')}
                         </span>
                         <span className="font-mono text-slate-400 dark:text-slate-500 text-xs">#{inv.number}</span>
-                        {inv.quoteMode === 'INDIVIDUAL' && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">Individual</span>}
+                        {inv.quoteMode === 'INDIVIDUAL' && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">{t('inv.modeIndividual')}</span>}
                     </div>
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{inv.clientName || 'Unknown Client'}</h3>
                     <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
@@ -1179,15 +1192,15 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
        {isEmailModalOpen && selectedInvoiceForEmail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[90vh]">
-             {/* Email Modal Content (Same as before) */}
+             {/* Email Modal Content */}
              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                 <div className="flex items-center gap-3">
                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400">
                       <Sparkles size={20} />
                    </div>
                    <div>
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">AI Email Composer</h3>
-                      <p className="text-xs text-slate-500">Drafting for {selectedInvoiceForEmail.type === DocumentType.INVOICE ? 'Invoice' : 'Quote'} #{selectedInvoiceForEmail.number}</p>
+                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">{t('inv.emailComposer')}</h3>
+                      <p className="text-xs text-slate-500">{t('inv.emailDrafting')} {selectedInvoiceForEmail.type === DocumentType.INVOICE ? t('inv.invoice') : t('inv.quotation')} #{selectedInvoiceForEmail.number}</p>
                    </div>
                 </div>
                 <button onClick={() => setIsEmailModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
@@ -1198,7 +1211,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
              <div className="p-6 overflow-y-auto space-y-6">
                 <div className="flex flex-wrap gap-4 items-center">
                     <div className="flex-1 min-w-[200px]">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Email Tone</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.emailTone')}</label>
                         <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
                              {['professional', 'friendly', 'urgent'].map(tone => (
                                  <button
@@ -1206,7 +1219,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                     onClick={() => setEmailTone(tone as any)}
                                     className={`flex-1 py-2 text-xs md:text-sm rounded-lg font-bold capitalize transition-all ${emailTone === tone ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
                                  >
-                                    {tone}
+                                    {tone === 'professional' ? t('inv.toneProfessional') : tone === 'friendly' ? t('inv.toneFriendly') : t('inv.toneUrgent')}
                                  </button>
                              ))}
                         </div>
@@ -1217,28 +1230,28 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                         className="mt-6 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isGeneratingEmail ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                        <span>Generate with AI</span>
+                        <span>{t('inv.generateAI')}</span>
                     </button>
                 </div>
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Subject</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('inv.subject')}</label>
                         <input 
                             type="text" 
                             value={emailDraft.subject}
                             onChange={(e) => setEmailDraft({...emailDraft, subject: e.target.value})}
-                            placeholder="AI will generate subject..."
+                            placeholder={t('inv.subjectPlaceholder')}
                             className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
                         />
                     </div>
                     <div className="space-y-2">
-                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Body</label>
+                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('inv.body')}</label>
                          <textarea 
                             rows={8}
                             value={emailDraft.body}
                             onChange={(e) => setEmailDraft({...emailDraft, body: e.target.value})}
-                            placeholder="Select a tone and click Generate..."
+                            placeholder={t('inv.bodyPlaceholder')}
                             className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
                          />
                     </div>
@@ -1247,9 +1260,9 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                 <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-xl p-4 flex items-start gap-3">
                     <Paperclip className="text-amber-500 shrink-0 mt-0.5" size={18} />
                     <div>
-                        <p className="text-sm text-amber-800 dark:text-amber-200 font-bold">Attachment Reminder</p>
+                        <p className="text-sm text-amber-800 dark:text-amber-200 font-bold">{t('inv.attachmentReminder')}</p>
                         <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                            Use the preview button to download/print the PDF first. Then, in the Gmail window, drag and drop the file to attach it.
+                            {t('inv.attachmentDesc')}
                         </p>
                     </div>
                 </div>
@@ -1261,7 +1274,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                     onClick={() => setIsEmailModalOpen(false)}
                     className="px-6 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-white dark:hover:bg-slate-800 font-bold transition-colors"
                  >
-                    Close
+                    {t('inv.close')}
                  </button>
                  <button 
                     onClick={handleOpenGmail}
@@ -1269,7 +1282,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                     className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-500/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
                  >
                     <Mail size={18} />
-                    <span>Open in Gmail</span>
+                    <span>{t('inv.openGmail')}</span>
                     <ExternalLink size={14} className="opacity-70" />
                  </button>
              </div>

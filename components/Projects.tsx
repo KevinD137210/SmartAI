@@ -145,7 +145,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
              </div>
              <input 
                 type="text" 
-                placeholder="Search projects..."
+                placeholder={t('proj.search')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white shadow-sm"
@@ -232,11 +232,11 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                                </div>
                            </div>
 
-                           <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3 min-h-[3rem]">{project.description || 'No description provided.'}</p>
+                           <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3 min-h-[3rem]">{project.description || t('proj.noDesc')}</p>
                       </div>
                       
                       <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 flex justify-between items-center">
-                          <span>Created: {project.createdAt}</span>
+                          <span>{t('proj.created')} {project.createdAt}</span>
                       </div>
                   </div>
               )})
@@ -249,7 +249,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
               <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg p-8 animate-scaleIn border border-slate-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
                   <div className="flex justify-between items-center mb-6">
                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-                          {editingProject.id && projects.find(p => p.id === editingProject.id) ? 'Edit Project' : t('proj.addNew')}
+                          {editingProject.id && projects.find(p => p.id === editingProject.id) ? t('proj.edit') : t('proj.addNew')}
                       </h3>
                       <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500">
                           <X size={24} />
@@ -276,7 +276,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                             onChange={e => setEditingProject({...editingProject, clientId: e.target.value})}
                             className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
                           >
-                             <option value="">Select a Client...</option>
+                             <option value="">{t('proj.selectClientPlaceholder')}</option>
                              {activeClients.map(client => (
                                  <option key={client.id} value={client.id}>{client.name}</option>
                              ))}
