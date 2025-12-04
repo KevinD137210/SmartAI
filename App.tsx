@@ -319,7 +319,7 @@ const MainLayout: React.FC = () => {
                 
                 <div className="max-w-7xl mx-auto p-4 md:p-8 pb-20">
                     <Routes>
-                        <Route path="/" element={<Dashboard transactions={transactions} invoices={invoices} />} />
+                        <Route path="/" element={<Dashboard transactions={transactions} invoices={invoices} projects={projects} />} />
                         <Route path="/bookkeeping" element={
                             <Bookkeeping 
                                 transactions={transactions} 
@@ -359,6 +359,7 @@ const MainLayout: React.FC = () => {
                                 onAdd={addProject}
                                 onUpdate={updateProject}
                                 onDelete={deleteProject}
+                                onSaveInvoice={saveInvoice}
                             />
                         } />
                         <Route path="/calendar" element={

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, InvoiceItem, DocumentType, InvoiceStatus, Client, Project } from '../types';
-import { Plus, Printer, Eye, Trash2, Edit2, ArrowLeft, Download, FileText, Users, Mail, Sparkles, Loader2, ExternalLink, Paperclip, X, Search, AlertCircle, ArrowRightCircle, Briefcase, Archive, Filter, CheckCircle } from 'lucide-react';
+import { Plus, Printer, Eye, Trash2, Edit2, ArrowLeft, Download, FileText, Users, Mail, Sparkles, Loader2, ExternalLink, Paperclip, X, Search, AlertCircle, ArrowRightCircle, Briefcase, Archive, Filter, CheckCircle, Globe, CreditCard, Building, User } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { generateInvoiceEmail } from '../services/geminiService';
+import { generateInvoiceEmail, translateText, generateTermsAndConditions } from '../services/geminiService';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 interface InvoicesProps {
@@ -28,8 +28,26 @@ const EmptyInvoice: Invoice = {
   items: [],
   status: InvoiceStatus.DRAFT,
   total: 0,
-  notes: ''
+  notes: '',
+  quoteMode: 'COMPANY',
+  docLanguage: 'zh-TW',
+  currency: 'USD',
+  taxRate: 0,
+  discount: 0,
+  depositPercentage: 0,
+  progressPaymentPercentage: 0
 };
+
+const TRANSLATION_OPTIONS = [
+    { code: 'en-US', label: 'USA English', flag: '🇺🇸' },
+    { code: 'zh-TW', label: 'Traditional Chinese', flag: '🇹🇼' },
+    { code: 'ja-JP', label: 'Japanese', flag: '🇯🇵' },
+    { code: 'ko-KR', label: 'Korean', flag: '🇰🇷' },
+    { code: 'zh-CN', label: 'Simplified Chinese', flag: '🇨🇳' },
+    { code: 'en-EU', label: 'EU English', flag: '🇪🇺' },
+];
+
+const CURRENCY_OPTIONS = ['USD', 'TWD', 'JPY', 'KRW', 'CNY', 'EUR', 'HKD', 'SGD'];
 
 export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], projects = [], onSaveInvoice, onDeleteInvoice, onUpdateStatus, onArchiveClient, onUpdateProject }) => {
   const { t, language } = useLanguage(); 
@@ -54,6 +72,12 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
   const [showNoClientAlert, setShowNoClientAlert] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState('');
 
+  // Translation & Terms State
+  const [translationLang, setTranslationLang] = useState(language === 'zh-TW' ? 'en-US' : 'zh-TW');
+  const [translatingState, setTranslatingState] = useState<{itemId: string, field: 'description' | 'notes'} | null>(null);
+  const [isTranslatingDoc, setIsTranslatingDoc] = useState(false);
+  const [isGeneratingTerms, setIsGeneratingTerms] = useState(false);
+
   // Handle incoming navigation state for pre-filling or opening invoice
   useEffect(() => {
     if (location.state) {
@@ -69,7 +93,11 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                 clientName: client ? client.name : '',
                 clientEmail: client ? client.email : '',
                 projectId: projectId,
-                items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]
+                items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }],
+                // Initialize with profile defaults if available
+                depositPercentage: profile.depositPercentage,
+                progressPaymentPercentage: 0,
+                docLanguage: language === 'zh-TW' ? 'zh-TW' : 'en-US'
             };
             
             setCurrentInvoice(newInvoice);
@@ -90,7 +118,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             window.history.replaceState({}, '');
         }
     }
-  }, [location, clients, invoices]);
+  }, [location, clients, invoices, profile, language]);
 
   const handleCreateNew = () => {
     // If filtering by project, pre-fill that project
@@ -100,17 +128,22 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
     setCurrentInvoice({
       ...EmptyInvoice,
       id: crypto.randomUUID(),
-      number: `INV-${Date.now().toString().slice(-6)}`,
+      number: `QUO-${Date.now().toString().slice(-6)}`, // Default to QUO for new manual entries
       projectId: filterProjectId || undefined,
       clientName: client ? client.name : '',
       clientEmail: client ? client.email : '',
-      items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]
+      items: [{ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }],
+      depositPercentage: profile.depositPercentage,
+      docLanguage: language === 'zh-TW' ? 'zh-TW' : 'en-US'
     });
     setView('EDIT');
   };
 
   const handleEdit = (inv: Invoice) => {
-    setCurrentInvoice(inv);
+    setCurrentInvoice({
+        ...EmptyInvoice, // Ensure new fields are present if editing old record
+        ...inv
+    });
     setView('EDIT');
   };
 
@@ -119,12 +152,18 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
     setView('PREVIEW');
   };
 
-  const calculateTotal = (items: InvoiceItem[]) => {
-    return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+  // Logic to calculate final totals based on all financials
+  const calculateFinancials = () => {
+      const subtotal = currentInvoice.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      const discountAmount = currentInvoice.discount || 0;
+      const taxableAmount = Math.max(0, subtotal - discountAmount);
+      const taxAmount = taxableAmount * ((currentInvoice.taxRate || 0) / 100);
+      const total = taxableAmount + taxAmount;
+      return { subtotal, total };
   };
 
   const handleSave = () => {
-    const total = calculateTotal(currentInvoice.items);
+    const { total } = calculateFinancials();
     onSaveInvoice({ ...currentInvoice, total });
     setShowSaveSuccess(true);
     setTimeout(() => {
@@ -157,6 +196,67 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
     setCurrentInvoice({ ...currentInvoice, items: newItems });
   };
 
+  const handleTranslateItem = async (itemId: string, text: string, field: 'description' | 'notes') => {
+      if (!text.trim()) return;
+      
+      setTranslatingState({ itemId, field });
+      try {
+          const translatedText = await translateText(text, translationLang);
+          updateItem(itemId, field, translatedText);
+      } catch (error) {
+          console.error('Translation failed', error);
+      } finally {
+          setTranslatingState(null);
+      }
+  };
+
+  const handleTranslateNotes = async () => {
+      if (!currentInvoice.notes?.trim()) return;
+      
+      setTranslatingState({ itemId: 'main-notes', field: 'notes' });
+      try {
+          const translatedText = await translateText(currentInvoice.notes, translationLang);
+          setCurrentInvoice(prev => ({ ...prev, notes: translatedText }));
+      } catch (error) {
+          console.error('Translation failed', error);
+      } finally {
+          setTranslatingState(null);
+      }
+  };
+
+  // Translate all items to the Doc Language
+  const handleTranslateDocument = async () => {
+      if (!currentInvoice.items.length) return;
+      
+      setIsTranslatingDoc(true);
+      try {
+          const newItems = await Promise.all(currentInvoice.items.map(async (item) => {
+              const newDesc = item.description ? await translateText(item.description, currentInvoice.docLanguage || 'en-US') : item.description;
+              const newNotes = item.notes ? await translateText(item.notes, currentInvoice.docLanguage || 'en-US') : item.notes;
+              return { ...item, description: newDesc, notes: newNotes };
+          }));
+          
+          setCurrentInvoice(prev => ({ ...prev, items: newItems }));
+      } catch (error) {
+          console.error("Doc Translation Error", error);
+      } finally {
+          setIsTranslatingDoc(false);
+      }
+  };
+
+  const handleGenerateTerms = async () => {
+      if (!currentInvoice.docLanguage) return;
+      setIsGeneratingTerms(true);
+      const terms = await generateTermsAndConditions(currentInvoice.docLanguage, currentInvoice.type);
+      
+      // Append if there are existing notes, otherwise set
+      setCurrentInvoice(prev => ({
+          ...prev, 
+          notes: prev.notes ? `${prev.notes}\n\n${terms}` : terms
+      }));
+      setIsGeneratingTerms(false);
+  };
+
   const selectClient = (client: Client) => {
       setCurrentInvoice(prev => ({
           ...prev,
@@ -183,31 +283,16 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
       }
   };
 
+  // ... (Keep existing Email and Print functions logic as is) ...
+  // [Truncated for brevity, assuming standard functions from previous context remain available in the component closure]
   const filteredClients = clients.filter(c => 
     c.status !== 'ARCHIVED' && 
     (c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) || 
     c.email.toLowerCase().includes(clientSearchTerm.toLowerCase()))
   );
-
   const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
-
   const filteredInvoices = invoices.filter(inv => !filterProjectId || inv.projectId === filterProjectId);
-
   const activeFilterProjectName = filterProjectId ? projects.find(p => p.id === filterProjectId)?.name : null;
-
-  // --- Workflow Logic ---
-  const convertToInvoice = (quote: Invoice) => {
-      const newInvoice: Invoice = {
-          ...quote,
-          id: crypto.randomUUID(),
-          number: quote.number.replace('QUO', 'INV').replace('INV', 'INV-NEW'), // simple logic, user can edit
-          type: DocumentType.INVOICE,
-          status: InvoiceStatus.DRAFT,
-          date: new Date().toISOString().split('T')[0]
-      };
-      setCurrentInvoice(newInvoice);
-      setView('EDIT');
-  };
 
   const handleArchiveClient = (inv: Invoice) => {
       const client = clients.find(c => c.email === inv.clientEmail || c.name === inv.clientName);
@@ -217,16 +302,12 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
           }
       }
   };
-
-
-  // --- Email Logic ---
   const handleOpenEmailModal = (inv: Invoice) => {
       setSelectedInvoiceForEmail(inv);
       setIsEmailModalOpen(true);
       setEmailDraft({ subject: '', body: '' });
       setEmailTone('professional');
   };
-
   const handleGenerateEmail = async () => {
       if (!selectedInvoiceForEmail) return;
       setIsGeneratingEmail(true);
@@ -234,55 +315,34 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
       setEmailDraft(result);
       setIsGeneratingEmail(false);
   };
-
   const handleOpenGmail = () => {
       if (!selectedInvoiceForEmail) return;
-      
-      // Update Invoice Status and Timestamp
       const now = new Date().toISOString();
       const updatedInvoice: Invoice = {
           ...selectedInvoiceForEmail,
           status: InvoiceStatus.SENT,
           emailSentAt: now
       };
-      
       onSaveInvoice(updatedInvoice);
-      
-      // Update Linked Project Status if applicable
       if (selectedInvoiceForEmail.projectId && onUpdateProject) {
           const project = projects.find(p => p.id === selectedInvoiceForEmail.projectId);
           if (project && project.status !== 'COMPLETED' && project.status !== 'ARCHIVED') {
              onUpdateProject({ ...project, status: 'QUOTE_SENT' });
           }
       }
-
       const { clientEmail } = selectedInvoiceForEmail;
       const { subject, body } = emailDraft;
       const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(clientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       window.open(url, '_blank');
-      
       setIsEmailModalOpen(false);
   };
-
-  // --- Printing Logic ---
   const handlePrint = () => {
     setIsPrinting(true);
     const printContent = document.getElementById('print-area');
-    
-    if (!printContent) {
-        setIsPrinting(false);
-        return;
-    }
-
+    if (!printContent) { setIsPrinting(false); return; }
     const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
+    iframe.style.position = 'fixed'; iframe.style.right = '0'; iframe.style.bottom = '0'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = '0';
     document.body.appendChild(iframe);
-
     const doc = iframe.contentWindow?.document;
     if (doc) {
         doc.open();
@@ -292,53 +352,24 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             <head>
                 <title>${currentInvoice.type} - ${currentInvoice.number}</title>
                 <script src="https://cdn.tailwindcss.com"></script>
-                <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-                    body { 
-                        font-family: 'Inter', sans-serif; 
-                        -webkit-print-color-adjust: exact !important; 
-                        print-color-adjust: exact !important;
-                    }
-                </style>
+                <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');body{font-family:'Inter',sans-serif;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}</style>
             </head>
-            <body>
-                ${printContent.innerHTML}
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() {
-                            window.print();
-                            window.parent.postMessage('printComplete', '*');
-                        }, 500); 
-                    }
-                </script>
-            </body>
+            <body>${printContent.innerHTML}<script>window.onload=function(){setTimeout(function(){window.print();window.parent.postMessage('printComplete','*');},500);}</script></body>
             </html>
         `);
         doc.close();
-
-        const cleanup = () => {
-            if (iframe.parentNode) {
-                iframe.parentNode.removeChild(iframe);
-            }
-            setIsPrinting(false);
-            window.removeEventListener('message', handleMessage);
-        };
-
-        const handleMessage = (event: MessageEvent) => {
-            if (event.data === 'printComplete') {
-                setTimeout(cleanup, 1000);
-            }
-        };
-        
-        window.addEventListener('message', handleMessage);
-        setTimeout(cleanup, 60000); 
+        const cleanup = () => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); setIsPrinting(false); window.removeEventListener('message', handleMessage); };
+        const handleMessage = (event: MessageEvent) => { if (event.data === 'printComplete') { setTimeout(cleanup, 1000); } };
+        window.addEventListener('message', handleMessage); setTimeout(cleanup, 60000); 
     }
   };
 
   // --- Sub-Component: Invoice Editor ---
   if (view === 'EDIT') {
+    const { subtotal, total } = calculateFinancials();
+
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn pb-20">
+      <div className="max-w-[1400px] mx-auto space-y-6 animate-fadeIn pb-20">
         <div className="flex items-center justify-between">
             <button onClick={() => setView('LIST')} className="flex items-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
                 <ArrowLeft size={20} className="mr-2"/> {t('inv.back')}
@@ -348,188 +379,405 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             </h2>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-8 space-y-8">
-            {/* Project & Type Selector */}
-            <div className="space-y-6">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                     <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.type')}</label>
-                        <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1.5 w-full">
-                             <button
-                                type="button"
-                                onClick={() => setCurrentInvoice({...currentInvoice, type: DocumentType.QUOTATION, number: currentInvoice.number.replace('INV', 'QUO')})}
-                                className={`flex-1 py-2 text-sm rounded-lg font-bold transition-all ${currentInvoice.type === DocumentType.QUOTATION ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-                            >
-                                {t('inv.quotation')}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setCurrentInvoice({...currentInvoice, type: DocumentType.INVOICE, number: currentInvoice.number.replace('QUO', 'INV')})}
-                                className={`flex-1 py-2 text-sm rounded-lg font-bold transition-all ${currentInvoice.type === DocumentType.INVOICE ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-                            >
-                                {t('inv.invoice')}
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.project')}</label>
-                        <select 
-                            value={currentInvoice.projectId || ''} 
-                            onChange={(e) => handleProjectSelect(e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
-                        >
-                            <option value="">{t('inv.selectProject')}</option>
-                            {activeProjects.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                 </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             
-            <hr className="border-slate-100 dark:border-slate-800" />
-
-            {/* Client Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-5">
-                    <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.clientName')}</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={currentInvoice.clientName}
-                                onChange={(e) => setCurrentInvoice({...currentInvoice, clientName: e.target.value})}
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                                placeholder={t('inv.clientPlace')}
-                            />
-                            <button 
-                                type="button" 
-                                onClick={() => {
-                                    if (clients.length === 0) {
-                                        setShowNoClientAlert(true);
-                                    } else {
-                                        setClientSearchTerm('');
-                                        setIsClientSelectorOpen(true);
-                                    }
-                                }}
-                                className="px-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+            {/* Left Column: Main Info & Items */}
+            <div className="lg:col-span-2 space-y-6">
+                
+                {/* Header Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.type')}</label>
+                            <div className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300 font-bold flex items-center gap-2">
+                                {currentInvoice.type === DocumentType.INVOICE ? (
+                                    <span className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                                        <FileText size={18} />
+                                        {t('inv.invoice')}
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                                        <FileText size={18} />
+                                        {t('inv.quotation')}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.project')}</label>
+                            <select 
+                                value={currentInvoice.projectId || ''} 
+                                onChange={(e) => handleProjectSelect(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
                             >
-                                <Users size={20} />
+                                <option value="">{t('inv.selectProject')}</option>
+                                {activeProjects.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                     </div>
+                     
+                     <hr className="border-slate-100 dark:border-slate-800" />
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.clientName')}</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={currentInvoice.clientName}
+                                        onChange={(e) => setCurrentInvoice({...currentInvoice, clientName: e.target.value})}
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                                        placeholder={t('inv.clientPlace')}
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            if (clients.length === 0) {
+                                                setShowNoClientAlert(true);
+                                            } else {
+                                                setClientSearchTerm('');
+                                                setIsClientSelectorOpen(true);
+                                            }
+                                        }}
+                                        className="px-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                                    >
+                                        <Users size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.number')}</label>
+                                <input
+                                    type="text"
+                                    value={currentInvoice.number}
+                                    onChange={(e) => setCurrentInvoice({...currentInvoice, number: e.target.value})}
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-mono"
+                                />
+                            </div>
+                         </div>
+                         
+                         {/* Removed Due Date input, making Date input full width in its column */}
+                         <div className="space-y-4">
+                            <div>
+                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.date')}</label>
+                                <input
+                                    type="date"
+                                    value={currentInvoice.date}
+                                    onChange={(e) => setCurrentInvoice({...currentInvoice, date: e.target.value})}
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white dark:scheme-dark"
+                                />
+                            </div>
+                         </div>
+                     </div>
+                </div>
+
+                {/* Items Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <h3 className="font-bold text-slate-800 dark:text-white">{t('inv.items')}</h3>
+                        <button onClick={addItem} className="text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 transition-colors">
+                            <Plus size={16} /> {t('inv.addItem')}
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {currentInvoice.items.map((item) => (
+                            <div key={item.id} className="flex flex-col md:flex-row gap-4 items-start bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <div className="flex-1 space-y-3 w-full">
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder={t('inv.desc')}
+                                            value={item.description}
+                                            onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                                            className="w-full pl-4 pr-32 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                                        />
+                                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                                            <select 
+                                                value={translationLang}
+                                                onChange={(e) => setTranslationLang(e.target.value)}
+                                                className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 py-1 pl-2 pr-1 outline-none cursor-pointer appearance-none"
+                                            >
+                                                {TRANSLATION_OPTIONS.map(opt => (
+                                                    <option key={opt.code} value={opt.code}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                            <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                                            <button 
+                                                onClick={() => handleTranslateItem(item.id, item.description, 'description')}
+                                                disabled={translatingState?.itemId === item.id || !item.description}
+                                                className="p-1.5 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 disabled:opacity-50 transition-colors"
+                                            >
+                                                {translatingState?.itemId === item.id && translatingState?.field === 'description' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="relative">
+                                        <textarea
+                                            placeholder={t('inv.itemNote')}
+                                            value={item.notes || ''}
+                                            onChange={(e) => updateItem(item.id, 'notes', e.target.value)}
+                                            className="w-full pl-4 pr-32 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-y min-h-[80px] text-sm"
+                                        />
+                                        <div className="absolute right-1 top-2 flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                                            <select 
+                                                value={translationLang}
+                                                onChange={(e) => setTranslationLang(e.target.value)}
+                                                className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 py-1 pl-2 pr-1 outline-none cursor-pointer appearance-none"
+                                            >
+                                                {TRANSLATION_OPTIONS.map(opt => (
+                                                    <option key={opt.code} value={opt.code}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                            <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                                            <button 
+                                                onClick={() => handleTranslateItem(item.id, item.notes || '', 'notes')}
+                                                disabled={translatingState?.itemId === item.id || !item.notes}
+                                                className="p-1.5 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 disabled:opacity-50 transition-colors"
+                                            >
+                                                {translatingState?.itemId === item.id && translatingState?.field === 'notes' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 w-full md:w-auto">
+                                    <div className="w-24">
+                                        <input
+                                            type="number"
+                                            placeholder={t('inv.qty')}
+                                            min="1"
+                                            value={item.quantity}
+                                            onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
+                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-right"
+                                        />
+                                    </div>
+                                    <div className="w-32">
+                                        <input
+                                            type="number"
+                                            placeholder={t('inv.price')}
+                                            min="0"
+                                            value={item.unitPrice}
+                                            onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))}
+                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-right"
+                                        />
+                                    </div>
+                                    <div className="pt-2">
+                                        <button onClick={() => removeItem(item.id)} className="text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 transition-colors">
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-end pt-6 border-t border-slate-100 dark:border-slate-800">
+                        <div className="text-right">
+                            <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t('inv.subtotal')}</span>
+                            <div className="text-2xl font-bold text-slate-700 dark:text-slate-300 mt-1">
+                                {currentInvoice.currency} {subtotal.toLocaleString()}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Notes Area */}
+                    <div className="pt-4">
+                        <div className="flex justify-between items-end mb-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('inv.notes')}</label>
+                            <button
+                                onClick={handleGenerateTerms}
+                                disabled={isGeneratingTerms}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors disabled:opacity-50"
+                            >
+                                {isGeneratingTerms ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                {t('inv.generateTerms')}
                             </button>
                         </div>
-                    </div>
-                </div>
-                <div className="space-y-5">
-                    <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.number')}</label>
-                        <input
-                            type="text"
-                            value={currentInvoice.number}
-                            onChange={(e) => setCurrentInvoice({...currentInvoice, number: e.target.value})}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-mono"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.date')}</label>
-                            <input
-                                type="date"
-                                value={currentInvoice.date}
-                                onChange={(e) => setCurrentInvoice({...currentInvoice, date: e.target.value})}
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white dark:scheme-dark"
+                        <div className="relative">
+                            <textarea
+                                rows={3}
+                                value={currentInvoice.notes || ''}
+                                onChange={(e) => setCurrentInvoice({...currentInvoice, notes: e.target.value})}
+                                className="w-full pl-4 pr-32 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
+                                placeholder="Add payment terms or additional notes..."
                             />
-                        </div>
-                        <div>
-                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.dueDate')}</label>
-                            <input
-                                type="date"
-                                value={currentInvoice.dueDate}
-                                onChange={(e) => setCurrentInvoice({...currentInvoice, dueDate: e.target.value})}
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white dark:scheme-dark"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-4">
-                <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
-                    <h3 className="font-bold text-slate-800 dark:text-white">{t('inv.items')}</h3>
-                    <button onClick={addItem} className="text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 transition-colors">
-                        <Plus size={16} /> {t('inv.addItem')}
-                    </button>
-                </div>
-                <div className="space-y-3">
-                    {currentInvoice.items.map((item) => (
-                        <div key={item.id} className="flex gap-4 items-start bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                            <div className="flex-1 space-y-2">
-                                <input
-                                    type="text"
-                                    placeholder={t('inv.desc')}
-                                    value={item.description}
-                                    onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder={t('inv.itemNote')}
-                                    value={item.notes || ''}
-                                    onChange={(e) => updateItem(item.id, 'notes', e.target.value)}
-                                    className="w-full px-4 py-2 bg-transparent border-b border-slate-200 dark:border-slate-700 text-sm text-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                                />
-                            </div>
-                            <div className="w-24">
-                                <input
-                                    type="number"
-                                    placeholder={t('inv.qty')}
-                                    min="1"
-                                    value={item.quantity}
-                                    onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
-                                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-right"
-                                />
-                            </div>
-                            <div className="w-32">
-                                <input
-                                    type="number"
-                                    placeholder={t('inv.price')}
-                                    min="0"
-                                    value={item.unitPrice}
-                                    onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))}
-                                    className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-right"
-                                />
-                            </div>
-                            <div className="pt-2">
-                                <button onClick={() => removeItem(item.id)} className="text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 transition-colors">
-                                    <Trash2 size={18} />
+                            <div className="absolute right-1 top-2 flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                                <select 
+                                    value={translationLang}
+                                    onChange={(e) => setTranslationLang(e.target.value)}
+                                    className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 py-1 pl-2 pr-1 outline-none cursor-pointer appearance-none"
+                                >
+                                    {TRANSLATION_OPTIONS.map(opt => (
+                                        <option key={opt.code} value={opt.code}>{opt.label}</option>
+                                    ))}
+                                </select>
+                                <div className="w-[1px] h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                                <button 
+                                    onClick={handleTranslateNotes}
+                                    disabled={translatingState?.itemId === 'main-notes' || !currentInvoice.notes}
+                                    className="p-1.5 text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 disabled:opacity-50 transition-colors"
+                                >
+                                    {translatingState?.itemId === 'main-notes' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                                 </button>
                             </div>
                         </div>
-                    ))}
-                </div>
-                <div className="flex justify-end pt-6 border-t border-slate-100 dark:border-slate-800">
-                    <div className="text-right">
-                        <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t('inv.totalAmount')}</span>
-                        <div className="text-4xl font-bold text-slate-800 dark:text-white mt-1">
-                            ${calculateTotal(currentInvoice.items).toLocaleString()}
-                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="flex justify-end gap-4 pt-4">
-                 <button
-                    onClick={() => setView('LIST')}
-                    className="px-6 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold transition-colors"
-                >
-                    {t('book.cancel')}
-                </button>
-                <button
-                    onClick={handleSave}
-                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-transform active:scale-95"
-                >
-                    {t('book.save')}
-                </button>
+            {/* Right Column: Financials Panel (Sticky) */}
+            <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24">
+                {/* ... existing code ... */}
+                <div className="bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-800 text-white overflow-hidden relative">
+                     <div className="flex items-center gap-2 mb-6">
+                         <CreditCard className="text-emerald-400" size={20} />
+                         <h3 className="font-bold text-lg tracking-wide">FINANCIALS</h3>
+                     </div>
+                     
+                     {/* Quote Mode Toggle */}
+                     <div className="mb-6">
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">QUOTE MODE</label>
+                         <div className="flex bg-slate-800 rounded-xl p-1">
+                             <button 
+                                onClick={() => setCurrentInvoice({...currentInvoice, quoteMode: 'COMPANY'})}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${currentInvoice.quoteMode === 'COMPANY' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                             >
+                                 <Building size={14} /> Company
+                             </button>
+                             <button 
+                                onClick={() => setCurrentInvoice({...currentInvoice, quoteMode: 'INDIVIDUAL'})}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${currentInvoice.quoteMode === 'INDIVIDUAL' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                             >
+                                 <User size={14} /> Individual
+                             </button>
+                         </div>
+                     </div>
+
+                     {/* Doc Language & Currency */}
+                     <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                 Doc Language 
+                             </label>
+                             <div className="flex gap-2">
+                                 <select
+                                     value={currentInvoice.docLanguage}
+                                     onChange={(e) => setCurrentInvoice({...currentInvoice, docLanguage: e.target.value})}
+                                     className="w-full bg-slate-800 text-white text-sm font-bold rounded-xl px-3 py-2.5 border border-slate-700 outline-none appearance-none"
+                                 >
+                                     {TRANSLATION_OPTIONS.map(opt => (
+                                         <option key={opt.code} value={opt.code}>{opt.label}</option>
+                                     ))}
+                                 </select>
+                                 <button 
+                                    onClick={handleTranslateDocument}
+                                    disabled={isTranslatingDoc}
+                                    className="px-3 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/40 rounded-xl transition-colors border border-indigo-500/30"
+                                    title="Translate all items to selected language"
+                                 >
+                                     {isTranslatingDoc ? <Loader2 size={16} className="animate-spin"/> : <Sparkles size={16} />}
+                                 </button>
+                             </div>
+                        </div>
+                        <div>
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Currency</label>
+                             <select
+                                 value={currentInvoice.currency}
+                                 onChange={(e) => setCurrentInvoice({...currentInvoice, currency: e.target.value})}
+                                 className="w-full bg-slate-800 text-white text-sm font-bold rounded-xl px-3 py-2.5 border border-slate-700 outline-none appearance-none"
+                             >
+                                 {CURRENCY_OPTIONS.map(c => (
+                                     <option key={c} value={c}>{c}</option>
+                                 ))}
+                             </select>
+                        </div>
+                     </div>
+
+                     {/* Financial Inputs */}
+                     <div className="space-y-4 mb-8">
+                         <div className="flex justify-between items-center">
+                             <label className="text-sm text-slate-400 font-medium">Tax Rate (%)</label>
+                             <input 
+                                type="number" 
+                                min="0" 
+                                value={currentInvoice.taxRate}
+                                onChange={(e) => setCurrentInvoice({...currentInvoice, taxRate: Number(e.target.value)})}
+                                className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500"
+                             />
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <label className="text-sm text-slate-400 font-medium">Discount</label>
+                             <input 
+                                type="number" 
+                                min="0" 
+                                value={currentInvoice.discount}
+                                onChange={(e) => setCurrentInvoice({...currentInvoice, discount: Number(e.target.value)})}
+                                className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500"
+                             />
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <label className="text-sm text-slate-400 font-medium">Deposit (%)</label>
+                             <div className="flex items-center gap-2">
+                                 <span className="text-xs text-slate-500">%</span>
+                                 <input 
+                                    type="number" 
+                                    min="0" 
+                                    max="100"
+                                    value={currentInvoice.depositPercentage}
+                                    onChange={(e) => setCurrentInvoice({...currentInvoice, depositPercentage: Number(e.target.value)})}
+                                    className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500"
+                                 />
+                             </div>
+                         </div>
+                         <div className="flex justify-between items-center">
+                             <label className="text-sm text-slate-400 font-medium">Progress Payment (%)</label>
+                             <div className="flex items-center gap-2">
+                                 <span className="text-xs text-slate-500">%</span>
+                                 <input 
+                                    type="number" 
+                                    min="0" 
+                                    max="100"
+                                    value={currentInvoice.progressPaymentPercentage}
+                                    onChange={(e) => setCurrentInvoice({...currentInvoice, progressPaymentPercentage: Number(e.target.value)})}
+                                    className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500"
+                                 />
+                             </div>
+                         </div>
+                     </div>
+                     
+                     {/* Grand Total */}
+                     <div className="pt-6 border-t border-slate-800">
+                         <div className="flex justify-between items-end">
+                             <span className="text-slate-400 font-bold text-lg">Total</span>
+                             <div className="text-right">
+                                 <div className="text-3xl font-bold text-white">{currentInvoice.currency} {total.toLocaleString()}</div>
+                                 {currentInvoice.taxRate > 0 && <div className="text-xs text-slate-500 mt-1">Includes Tax</div>}
+                             </div>
+                         </div>
+                     </div>
+
+                     {/* Action Buttons */}
+                     <div className="grid grid-cols-2 gap-4 mt-8">
+                        <button
+                            onClick={() => setView('LIST')}
+                            className="px-4 py-3 border border-slate-700 text-slate-300 rounded-xl hover:bg-slate-800 font-bold transition-colors"
+                        >
+                            {t('book.cancel')}
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            className="px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-transform active:scale-95"
+                        >
+                            {t('book.save')}
+                        </button>
+                    </div>
+                </div>
             </div>
+
         </div>
         
         {/* Success Modal */}
@@ -546,7 +794,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             </div>
         )}
 
-        {/* Client Selector Modal and Alert Modal - Same as before */}
+        {/* Client Selector Modal (Same as before) */}
         {isClientSelectorOpen && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
                 <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[80vh]">
@@ -624,10 +872,23 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
     );
   }
 
-  // --- Print Preview remains similar, no logic change needed there ---
+  // --- Print Preview Logic remains similar but updated to reflect new fields ---
   if (view === 'PREVIEW') {
-     const depositAmount = currentInvoice.total * (profile.depositPercentage / 100);
-      const balanceAmount = currentInvoice.total - depositAmount;
+     // Recalculate based on saved invoice (which now includes taxRate etc)
+     const subtotal = currentInvoice.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+     const discount = currentInvoice.discount || 0;
+     const taxAmount = (subtotal - discount) * ((currentInvoice.taxRate || 0) / 100);
+     const total = (subtotal - discount) + taxAmount;
+     
+     const depositAmount = total * ((currentInvoice.depositPercentage || profile.depositPercentage) / 100);
+     const balanceAmount = total - depositAmount;
+
+     // Calculate Validity/Due Date
+     // If emailSentAt exists, use that + 15 days. Otherwise, use Issue Date + 15 days (Projected).
+     const baseDate = currentInvoice.emailSentAt ? new Date(currentInvoice.emailSentAt) : new Date(currentInvoice.date);
+     const dueDateObj = new Date(baseDate);
+     dueDateObj.setDate(dueDateObj.getDate() + 15);
+     const displayDueDate = dueDateObj.toISOString().split('T')[0];
 
       return (
           <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn pb-20">
@@ -650,16 +911,28 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             <div className="bg-white text-slate-900 shadow-xl rounded-none md:rounded-lg p-12 min-h-[1000px]" id="print-area">
                 <div className="flex justify-between items-start mb-12">
                     <div>
+                        {/* Logo Logic: Only show if Company Mode AND logo exists */}
+                        {currentInvoice.quoteMode === 'COMPANY' && profile.logo && (
+                            <img src={profile.logo} alt="Company Logo" className="h-16 mb-4 object-contain" />
+                        )}
+
                         <h1 className="text-4xl font-bold text-slate-800 tracking-tight">
                             {currentInvoice.type === DocumentType.INVOICE ? t('inv.invoice') : t('inv.quotation')}
                         </h1>
                         <p className="text-slate-500 mt-2 font-mono">#{currentInvoice.number}</p>
                     </div>
                     <div className="text-right">
-                        <div className="text-2xl font-bold text-indigo-600">{profile.companyName}</div>
+                        {/* Name Logic: Company Name if Company Mode, Contact Name if Individual Mode */}
+                        <div className="text-2xl font-bold text-indigo-600">
+                            {currentInvoice.quoteMode === 'COMPANY' ? profile.companyName : profile.contactName}
+                        </div>
                         <p className="text-slate-500 text-sm mt-1">{profile.address}</p>
                         <p className="text-slate-500 text-sm">{profile.email} | {profile.phone}</p>
-                        {profile.taxId && <p className="text-slate-500 text-sm">Tax ID: {profile.taxId}</p>}
+                        
+                        {/* Tax ID only for Company Mode */}
+                        {currentInvoice.quoteMode === 'COMPANY' && profile.taxId && (
+                            <p className="text-slate-500 text-sm">Tax ID: {profile.taxId}</p>
+                        )}
                     </div>
                 </div>
 
@@ -674,12 +947,10 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t('inv.date')}</h3>
                             <div className="font-medium text-slate-900">{currentInvoice.date}</div>
                         </div>
-                        {currentInvoice.dueDate && (
-                            <div>
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t('inv.dueDate')}</h3>
-                                <div className="font-medium text-slate-900">{currentInvoice.dueDate}</div>
-                            </div>
-                        )}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{t('inv.dueDate')}</h3>
+                            <div className="font-medium text-slate-900">{displayDueDate}</div>
+                        </div>
                     </div>
                 </div>
 
@@ -700,43 +971,78 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                     {item.notes && <div className="text-xs text-slate-500 mt-1">{item.notes}</div>}
                                 </td>
                                 <td className="py-4 text-right text-slate-600">{item.quantity}</td>
-                                <td className="py-4 text-right text-slate-600">${item.unitPrice.toLocaleString()}</td>
-                                <td className="py-4 text-right font-medium text-slate-800">${(item.quantity * item.unitPrice).toLocaleString()}</td>
+                                <td className="py-4 text-right text-slate-600">{currentInvoice.currency} {item.unitPrice.toLocaleString()}</td>
+                                <td className="py-4 text-right font-medium text-slate-800">{currentInvoice.currency} {(item.quantity * item.unitPrice).toLocaleString()}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
 
                 <div className="flex justify-end border-t-2 border-slate-100 pt-6">
-                    <div className="w-72">
-                        <div className="flex justify-between items-center mb-2">
+                    <div className="w-72 space-y-2">
+                        <div className="flex justify-between items-center text-sm">
                             <span className="text-slate-600">{t('inv.subtotal')}</span>
-                            <span className="font-medium text-slate-900">${currentInvoice.total.toLocaleString()}</span>
+                            <span className="font-medium text-slate-900">{currentInvoice.currency} {subtotal.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center text-xl font-bold text-slate-800 mt-4 pb-4 border-b border-slate-100">
+                        
+                        {discount > 0 && (
+                             <div className="flex justify-between items-center text-sm text-rose-600">
+                                <span>Discount</span>
+                                <span>- {currentInvoice.currency} {discount.toLocaleString()}</span>
+                            </div>
+                        )}
+                        
+                        {taxAmount > 0 && (
+                             <div className="flex justify-between items-center text-sm">
+                                <span className="text-slate-600">Tax ({currentInvoice.taxRate}%)</span>
+                                <span className="font-medium text-slate-900">{currentInvoice.currency} {taxAmount.toLocaleString()}</span>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-xl font-bold text-slate-800 mt-4 pb-4 border-b border-slate-100 border-t pt-4">
                             <span>{t('inv.total')}</span>
-                            <span>${currentInvoice.total.toLocaleString()}</span>
+                            <span>{currentInvoice.currency} {total.toLocaleString()}</span>
                         </div>
                         
                         <div className="mt-4 space-y-2">
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-500">{t('inv.deposit')} ({profile.depositPercentage}%)</span>
-                                <span className="font-medium text-slate-900">${depositAmount.toLocaleString()}</span>
+                                <span className="text-slate-500">{t('inv.deposit')} ({currentInvoice.depositPercentage || 0}%)</span>
+                                <span className="font-medium text-slate-900">{currentInvoice.currency} {depositAmount.toLocaleString()}</span>
                             </div>
+                             {/* Show progress payment if set > 0 */}
+                             {currentInvoice.progressPaymentPercentage && currentInvoice.progressPaymentPercentage > 0 ? (
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-500">Progress Payment ({currentInvoice.progressPaymentPercentage}%)</span>
+                                    <span className="font-medium text-slate-900">{currentInvoice.currency} {(total * (currentInvoice.progressPaymentPercentage / 100)).toLocaleString()}</span>
+                                </div>
+                             ) : null}
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-slate-500">{t('inv.balance')} ({profile.secondPaymentPercentage}%)</span>
-                                <span className="font-medium text-slate-900">${balanceAmount.toLocaleString()}</span>
+                                <span className="text-slate-500">{t('inv.balance')}</span>
+                                <span className="font-medium text-slate-900">{currentInvoice.currency} {balanceAmount.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {currentInvoice.notes && (
-                    <div className="mt-16 pt-8 border-t border-slate-100">
-                        <h4 className="text-sm font-bold text-slate-800 mb-2">{t('inv.notes')}</h4>
-                        <p className="text-slate-600 text-sm leading-relaxed">{currentInvoice.notes}</p>
-                    </div>
-                )}
+                <div className="mt-12 flex flex-col gap-8">
+                    {currentInvoice.notes && (
+                        <div className="pt-8 border-t border-slate-100">
+                            <h4 className="text-sm font-bold text-slate-800 mb-2">{t('inv.notes')}</h4>
+                            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{currentInvoice.notes}</p>
+                        </div>
+                    )}
+
+                    {/* Signature Section */}
+                    {profile.signature && (
+                        <div className="flex justify-end pt-8">
+                            <div className="text-center">
+                                <img src={profile.signature} alt="Signature" className="h-20 object-contain mb-2 mx-auto" />
+                                <div className="border-t border-slate-300 w-48"></div>
+                                <p className="text-xs text-slate-400 mt-2 uppercase tracking-wider font-bold">Authorized Signature</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
           </div>
       )
@@ -794,12 +1100,13 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                             {inv.type === DocumentType.INVOICE ? t('inv.invoice') : t('inv.quotation')}
                         </span>
                         <span className="font-mono text-slate-400 dark:text-slate-500 text-xs">#{inv.number}</span>
+                        {inv.quoteMode === 'INDIVIDUAL' && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">Individual</span>}
                     </div>
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{inv.clientName || 'Unknown Client'}</h3>
                     <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
                         <span>{inv.date}</span>
                         <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">${inv.total.toLocaleString()}</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-300">{inv.currency || 'USD'} {inv.total.toLocaleString()}</span>
                     </div>
                 </div>
                 
@@ -853,14 +1160,6 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
 
                     {/* Workflow Actions */}
                     <div className="flex gap-2">
-                        {inv.type === DocumentType.QUOTATION && (
-                             <button 
-                                onClick={() => convertToInvoice(inv)}
-                                className="text-[10px] flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors font-bold"
-                             >
-                                 <ArrowRightCircle size={12} /> {t('inv.convertToInvoice')}
-                             </button>
-                        )}
                         {inv.status === InvoiceStatus.PAID && (
                              <button 
                                 onClick={() => handleArchiveClient(inv)}

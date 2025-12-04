@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Project, Client, ProjectStatus, Invoice, DocumentType } from '../types';
+import { Project, Client, ProjectStatus, Invoice, DocumentType, InvoiceStatus } from '../types';
 import { Plus, Edit2, Trash2, Search, Briefcase, FolderOpen, CheckCircle, X, ChevronDown, FileText } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -11,6 +11,7 @@ interface ProjectsProps {
   onAdd: (project: Project) => void;
   onUpdate: (project: Project) => void;
   onDelete: (id: string) => void;
+  onSaveInvoice?: (invoice: Invoice) => void;
 }
 
 const EmptyProject: Project = {
@@ -22,7 +23,7 @@ const EmptyProject: Project = {
     createdAt: ''
 };
 
-export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices, onAdd, onUpdate, onDelete }) => {
+export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices, onAdd, onUpdate, onDelete, onSaveInvoice }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,6 +71,41 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
           onAdd(editingProject);
       }
       setIsModalOpen(false);
+  };
+
+  const handleStatusChange = (project: Project, newStatus: ProjectStatus) => {
+      // Logic: Update Status
+      onUpdate({...project, status: newStatus});
+
+      // Automation: If status is COMPLETED, auto-generate invoice
+      if (newStatus === 'COMPLETED' && onSaveInvoice) {
+          // Find the latest quote for this project
+          const projectQuotes = invoices
+            .filter(i => i.projectId === project.id && i.type === DocumentType.QUOTATION)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+          if (projectQuotes.length > 0) {
+              const latestQuote = projectQuotes[0];
+              const newInvoice: Invoice = {
+                  ...latestQuote,
+                  id: crypto.randomUUID(),
+                  number: latestQuote.number.replace('QUO', 'INV').replace('INV', `INV-${Date.now().toString().slice(-4)}`),
+                  type: DocumentType.INVOICE,
+                  status: InvoiceStatus.DRAFT,
+                  date: new Date().toISOString().split('T')[0],
+                  dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // +14 days default
+                  emailSentAt: undefined
+              };
+              
+              onSaveInvoice(newInvoice);
+              alert("Project Completed! An invoice has been automatically generated from the latest quote.");
+              
+              // Navigate to Invoice Preview/Print
+              navigate('/invoices', { state: { openInvoiceId: newInvoice.id } });
+          } else {
+              alert("Project completed, but no quote was found to generate an invoice from.");
+          }
+      }
   };
 
   const getClientName = (id: string) => {
@@ -178,7 +214,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                            <div className="relative">
                                <select 
                                    value={project.status || 'NOT_SET'}
-                                   onChange={(e) => onUpdate({...project, status: e.target.value as ProjectStatus})}
+                                   onChange={(e) => handleStatusChange(project, e.target.value as ProjectStatus)}
                                    className={`w-full appearance-none px-3 py-2 rounded-xl text-xs font-bold border-none outline-none cursor-pointer ${getStatusColor(project.status || 'NOT_SET')}`}
                                >
                                    {PROJECT_STATUSES.map(status => (

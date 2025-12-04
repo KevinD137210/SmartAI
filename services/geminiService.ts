@@ -3,21 +3,60 @@ import { PriceCheckResult, Invoice, DocumentType } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const checkMarketPrice = async (query: string, language: 'en' | 'zh-TW'): Promise<PriceCheckResult> => {
+const LOCALE_CONFIG: Record<string, { lang: string, currency: string, instruction: string }> = {
+  'zh-TW': { 
+    lang: 'Traditional Chinese (Taiwan)', 
+    currency: 'New Taiwan Dollar (TWD)',
+    instruction: 'Search for prices in Taiwan. Report in TWD.'
+  },
+  'en-US': { 
+    lang: 'English (US)', 
+    currency: 'US Dollar (USD)',
+    instruction: 'Search for global/US prices. Report in USD.'
+  },
+  'ja-JP': { 
+    lang: 'Japanese', 
+    currency: 'Japanese Yen (JPY)',
+    instruction: 'Search for prices in Japan. Report in JPY.'
+  },
+  'ko-KR': { 
+    lang: 'Korean', 
+    currency: 'South Korean Won (KRW)',
+    instruction: 'Search for prices in South Korea. Report in KRW.'
+  },
+  'zh-CN': { 
+    lang: 'Simplified Chinese', 
+    currency: 'Chinese Yuan (CNY)',
+    instruction: 'Search for prices in China. Report in CNY.'
+  },
+  'en-EU': { 
+    lang: 'English (Europe)', 
+    currency: 'Euro (EUR)',
+    instruction: 'Search for prices in Europe. Report in EUR.'
+  }
+};
+
+export const checkMarketPrice = async (query: string, targetLocale: string): Promise<PriceCheckResult> => {
   try {
     const modelId = 'gemini-2.5-flash'; 
     
-    let langInstruction = '';
-    if (language === 'zh-TW') {
-        langInstruction = 'Please answer in Traditional Chinese (Taiwan). Prioritize finding prices in New Taiwan Dollar (TWD). If TWD is unavailable, provide USD.';
-    } else {
-        langInstruction = 'Provide a concise summary of the prices found in New Taiwan Dollar (TWD) or USD if local not available.';
-    }
+    // Default to US if code not found
+    const config = LOCALE_CONFIG[targetLocale] || LOCALE_CONFIG['en-US'];
 
-    // Construct a specific prompt for price checking
-    const prompt = `Find the current market price or price range for: "${query}". 
-    ${langInstruction}
-    List key specifications if relevant to the price difference.`;
+    // Construct a specific prompt for price checking with locale context
+    const prompt = `
+    Task: Market Price Analysis
+    Product: "${query}"
+    Target Market: ${config.instruction}
+    Output Language: ${config.lang}
+
+    Instructions:
+    1. Search for the current market price or price range for the product in the target market.
+    2. Prioritize local e-commerce sites or retailers for the region.
+    3. State prices clearly in ${config.currency}. If local currency is absolutely unavailable, convert approx USD to ${config.currency}.
+    4. List key specifications if they affect the price significantly.
+    5. Provide a concise summary.
+    `;
 
     const response = await ai.models.generateContent({
       model: modelId,
@@ -49,10 +88,39 @@ export const checkMarketPrice = async (query: string, language: 'en' | 'zh-TW'):
   } catch (error) {
     console.error("Gemini Price Check Error:", error);
     return {
-      text: language === 'zh-TW' ? "查詢價格時發生錯誤。請確認您的 API 金鑰是否有效。" : "An error occurred while checking prices. Please ensure your API key is valid.",
+      text: targetLocale === 'zh-TW' ? "查詢價格時發生錯誤。請確認您的 API 金鑰是否有效。" : "An error occurred while checking prices. Please ensure your API key is valid.",
       sources: []
     };
   }
+};
+
+export const translateText = async (text: string, targetLocale: string): Promise<string> => {
+    try {
+        const modelId = 'gemini-2.5-flash';
+        const config = LOCALE_CONFIG[targetLocale] || LOCALE_CONFIG['en-US'];
+        
+        const prompt = `
+        Role: Professional Business Translator
+        Task: Translate the invoice/quotation item description below to ${config.lang}.
+        Source Text: "${text}"
+        
+        Requirements:
+        1. Maintain professional business terminology.
+        2. Keep product model numbers, technical specs, or proper nouns unchanged if appropriate.
+        3. Output ONLY the translated text, no explanations.
+        4. If the text is already in the target language, improve its professional tone.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: modelId,
+            contents: prompt,
+        });
+
+        return response.text?.trim() || text;
+    } catch (error) {
+        console.error("Translation Error:", error);
+        return text;
+    }
 };
 
 export const generateInvoiceEmail = async (invoice: Invoice, tone: 'professional' | 'friendly' | 'urgent', language: 'en' | 'zh-TW'): Promise<{ subject: string; body: string }> => {
@@ -98,5 +166,48 @@ export const generateInvoiceEmail = async (invoice: Invoice, tone: 'professional
         ? "抱歉，AI 無法產生郵件內容。請手動撰寫。" 
         : "Sorry, AI could not generate the email content. Please write manually."
     };
+  }
+};
+
+export const generateTermsAndConditions = async (docLanguage: string, docType: string): Promise<string> => {
+  try {
+    const modelId = 'gemini-2.5-flash';
+    // Map docLanguage code to a region name for better search context
+    const regionMap: Record<string, string> = {
+      'en-US': 'United States',
+      'zh-TW': 'Taiwan',
+      'ja-JP': 'Japan',
+      'ko-KR': 'South Korea',
+      'zh-CN': 'China',
+      'en-EU': 'European Union'
+    };
+    const region = regionMap[docLanguage] || 'International';
+    const typeStr = docType === DocumentType.INVOICE ? 'Invoice' : 'Quotation';
+
+    const prompt = `
+    Task: Generate concise, precise, and practical standard terms and conditions for a business ${typeStr} in ${region}.
+    
+    Requirements:
+    1. Search for standard legal clauses used in ${region} for commercial transactions regarding ${typeStr}s.
+    2. Focus on clauses that protect BOTH the supplier (seller) and the client (buyer) fairly.
+    3. Include key points such as Payment Terms, Delivery/Shipping, Warranty/Liability, Validity of Quote (if applicable), and Dispute Resolution.
+    4. The output must be in the target language: ${docLanguage === 'zh-TW' || docLanguage === 'zh-CN' ? 'Traditional Chinese' : 'English'}.
+    5. Format as a professional list of bullet points.
+    6. Do not include introductory text like "Here are the terms...", just the terms themselves.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }], // Enable grounding to find real treaty/clause examples
+        temperature: 0.4,
+      },
+    });
+
+    return response.text?.trim() || "Could not generate terms at this time.";
+  } catch (error) {
+    console.error("Gemini Terms Gen Error:", error);
+    return "Error generating terms. Please try again.";
   }
 };

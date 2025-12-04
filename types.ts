@@ -57,6 +57,15 @@ export interface Invoice {
   notes?: string;
   total: number;
   emailSentAt?: string; // Track when the quote was sent for validity logic
+
+  // Financial & Config Fields
+  quoteMode?: 'COMPANY' | 'INDIVIDUAL';
+  docLanguage?: string;
+  currency?: string;
+  taxRate?: number;
+  discount?: number;
+  depositPercentage?: number;
+  progressPaymentPercentage?: number;
 }
 
 export interface UserProfile {
@@ -68,6 +77,8 @@ export interface UserProfile {
   taxId: string;
   depositPercentage: number;
   secondPaymentPercentage: number;
+  logo?: string; // Base64 string for logo image
+  signature?: string; // Base64 string for signature image
 }
 
 export interface PriceCheckResult {

@@ -36,6 +36,8 @@ const translations: Translations = {
     'dash.viewInvalid': 'Invalid Quotes',
     'dash.closedCases': 'Closed Cases',
     'dash.totalInvoices': 'Invoices',
+    'dash.invoicesIssued': 'Invoices Issued',
+    'dash.viewInvoices': 'Invoices Issued List',
     'dash.quickActions': 'Quick Actions',
     'dash.recentQuotes': 'Recent Quotes',
     'dash.clients': 'Clients',
@@ -136,6 +138,7 @@ const translations: Translations = {
     'inv.backToProjects': 'Back to Projects',
     'inv.viewProject': 'View Project',
     'inv.added': 'Document Saved',
+    'inv.generateTerms': 'AI Terms Generation',
 
     // Projects
     'proj.title': 'Projects',
@@ -257,6 +260,8 @@ const translations: Translations = {
     'dash.viewInvalid': '無效報價列表',
     'dash.closedCases': '已結案件',
     'dash.totalInvoices': '發票',
+    'dash.invoicesIssued': '已開立發票',
+    'dash.viewInvoices': '已開立發票列表',
     'dash.quickActions': '快速操作',
     'dash.recentQuotes': '近期報價',
     'dash.clients': '客戶管理',
@@ -357,6 +362,7 @@ const translations: Translations = {
     'inv.backToProjects': '返回專案狀態',
     'inv.viewProject': '查看專案',
     'inv.added': '已儲存',
+    'inv.generateTerms': 'AI 自動生成條款',
 
     // Projects
     'proj.title': '專案管理',

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Save, User, Building, MapPin, Mail, Phone, CreditCard, CheckCircle } from 'lucide-react';
+import { Save, User, Building, MapPin, Mail, Phone, CreditCard, CheckCircle, Image as ImageIcon, Upload, X, PenTool } from 'lucide-react';
 
 export const Settings: React.FC = () => {
   const { profile, updateProfile } = useSettings();
@@ -17,6 +17,25 @@ export const Settings: React.FC = () => {
     }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'logo' | 'signature') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+          alert("File is too large. Please upload an image under 2MB.");
+          return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, [field]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = (field: 'logo' | 'signature') => {
+      setFormData(prev => ({ ...prev, [field]: undefined }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfile(formData);
@@ -26,9 +45,80 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-10">
-      {/* Header removed */}
-
       <form onSubmit={handleSubmit} className="space-y-8">
+        
+        {/* Branding & Signature Section */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-800">
+             <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                <ImageIcon className="text-purple-500" size={24} />
+                Branding & Signature
+             </h3>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                 {/* Logo Upload */}
+                 <div className="space-y-3">
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Company Logo</label>
+                     <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50 min-h-[160px] relative">
+                         {formData.logo ? (
+                             <>
+                                <img src={formData.logo} alt="Logo Preview" className="max-h-24 object-contain mb-2" />
+                                <button 
+                                    type="button"
+                                    onClick={() => removeImage('logo')}
+                                    className="absolute top-2 right-2 p-1 bg-white dark:bg-slate-700 rounded-full shadow-sm text-rose-500 hover:text-rose-600"
+                                >
+                                    <X size={16} />
+                                </button>
+                             </>
+                         ) : (
+                             <>
+                                <Upload className="text-slate-300 dark:text-slate-500 mb-2" size={32} />
+                                <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">Upload Logo</span>
+                                <span className="text-xs text-slate-400 mt-1">PNG, JPG (Max 2MB)</span>
+                             </>
+                         )}
+                         <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={(e) => handleFileChange(e, 'logo')}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                         />
+                     </div>
+                 </div>
+
+                 {/* Signature Upload */}
+                 <div className="space-y-3">
+                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Signature</label>
+                     <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50 min-h-[160px] relative">
+                         {formData.signature ? (
+                             <>
+                                <img src={formData.signature} alt="Signature Preview" className="max-h-20 object-contain mb-2" />
+                                <button 
+                                    type="button"
+                                    onClick={() => removeImage('signature')}
+                                    className="absolute top-2 right-2 p-1 bg-white dark:bg-slate-700 rounded-full shadow-sm text-rose-500 hover:text-rose-600"
+                                >
+                                    <X size={16} />
+                                </button>
+                             </>
+                         ) : (
+                             <>
+                                <PenTool className="text-slate-300 dark:text-slate-500 mb-2" size={32} />
+                                <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">Upload Signature</span>
+                                <span className="text-xs text-slate-400 mt-1">Transparent PNG recommended</span>
+                             </>
+                         )}
+                         <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={(e) => handleFileChange(e, 'signature')}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                         />
+                     </div>
+                 </div>
+             </div>
+        </div>
+
         {/* Basic Information Section */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-800">
           <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
