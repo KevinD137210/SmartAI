@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { Project, Client, ProjectStatus } from '../types';
-import { Plus, Edit2, Trash2, Search, Briefcase, FolderOpen, CheckCircle, X, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Project, Client, ProjectStatus, Invoice, DocumentType } from '../types';
+import { Plus, Edit2, Trash2, Search, Briefcase, FolderOpen, CheckCircle, X, ChevronDown, FileText } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface ProjectsProps {
   projects: Project[];
   clients: Client[];
+  invoices: Invoice[];
   onAdd: (project: Project) => void;
   onUpdate: (project: Project) => void;
   onDelete: (id: string) => void;
@@ -20,11 +22,24 @@ const EmptyProject: Project = {
     createdAt: ''
 };
 
-export const Projects: React.FC<ProjectsProps> = ({ projects, clients, onAdd, onUpdate, onDelete }) => {
+export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices, onAdd, onUpdate, onDelete }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project>(EmptyProject);
+
+  useEffect(() => {
+    if (location.state?.filterProjectId) {
+      const targetProject = projects.find(p => p.id === location.state.filterProjectId);
+      if (targetProject) {
+        setSearchTerm(targetProject.name);
+      }
+      // Replace state to prevent filter persistence on reload/navigation
+      window.history.replaceState({}, '');
+    }
+  }, [location.state, projects]);
 
   // Filter Active clients for new projects
   const activeClients = clients.filter(c => c.status !== 'ARCHIVED');
@@ -118,7 +133,16 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, onAdd, on
                 <p className="text-slate-400 dark:text-slate-500 font-medium">{t('proj.noData')}</p>
             </div>
           ) : (
-              filteredProjects.map(project => (
+              filteredProjects.map(project => {
+                  // We check if there are any invoices/quotes to style the button active, 
+                  // but the click action always goes to the list view filtered by project.
+                  const hasDocs = invoices.some(i => i.projectId === project.id);
+
+                  const handleQuoteClick = () => {
+                      navigate('/invoices', { state: { filterProjectId: project.id } });
+                  };
+
+                  return (
                   <div key={project.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg dark:hover:shadow-indigo-900/10 transition-all group flex flex-col relative overflow-hidden">
                       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${project.status === 'COMPLETED' ? 'from-slate-500/10' : 'from-indigo-500/5'} to-transparent rounded-bl-[4rem] -mr-8 -mt-8 pointer-events-none`}></div>
                       
@@ -133,6 +157,13 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, onAdd, on
                               </div>
                           </div>
                           <div className="flex gap-1 z-10">
+                              <button 
+                                onClick={handleQuoteClick} 
+                                className={`p-2 rounded-xl transition-colors ${hasDocs ? 'text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' : 'text-slate-400 hover:text-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                title={t('inv.title')}
+                              >
+                                  <FileText size={16} />
+                              </button>
                               <button onClick={() => handleOpenModal(project)} className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors">
                                   <Edit2 size={16} />
                               </button>
@@ -172,7 +203,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, onAdd, on
                           <span>Created: {project.createdAt}</span>
                       </div>
                   </div>
-              ))
+              )})
           )}
       </div>
 

@@ -18,6 +18,7 @@ export interface InvoiceItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  notes?: string;
 }
 
 export enum InvoiceStatus {
@@ -55,6 +56,7 @@ export interface Invoice {
   status: InvoiceStatus;
   notes?: string;
   total: number;
+  emailSentAt?: string; // Track when the quote was sent for validity logic
 }
 
 export interface UserProfile {

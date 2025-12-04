@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CalendarEvent } from '../types';
 import { ChevronLeft, ChevronRight, Plus, X, Clock, Bell, Trash2, Calendar as CalendarIcon, List } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -19,6 +19,8 @@ const EmptyEvent: CalendarEvent = {
   reminderMinutes: 0
 };
 
+const STANDARD_REMINDERS = [-1, 0, 5, 15, 30, 60, 1440];
+
 export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
   const { t } = useLanguage();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -26,6 +28,25 @@ export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdate
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent>(EmptyEvent);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Custom reminder logic
+  const [isCustomReminder, setIsCustomReminder] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState<number>(10);
+
+  useEffect(() => {
+      if (isModalOpen) {
+          const mins = editingEvent.reminderMinutes;
+          // Check if it is a standard reminder (undefined treated as -1 for logic)
+          const effectiveMins = mins === undefined ? -1 : mins;
+          
+          if (!STANDARD_REMINDERS.includes(effectiveMins)) {
+              setIsCustomReminder(true);
+              setCustomMinutes(effectiveMins);
+          } else {
+              setIsCustomReminder(false);
+          }
+      }
+  }, [isModalOpen, editingEvent.id]); // trigger when modal opens or event changes
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -78,6 +99,22 @@ export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdate
           onAddEvent(editingEvent);
       }
       setIsModalOpen(false);
+  };
+
+  const handleReminderChange = (value: string) => {
+      if (value === 'custom') {
+          setIsCustomReminder(true);
+          setEditingEvent({ ...editingEvent, reminderMinutes: customMinutes });
+      } else {
+          setIsCustomReminder(false);
+          const val = parseInt(value);
+          setEditingEvent({ ...editingEvent, reminderMinutes: val === -1 ? undefined : val });
+      }
+  };
+
+  const handleCustomMinutesChange = (value: number) => {
+      setCustomMinutes(value);
+      setEditingEvent({ ...editingEvent, reminderMinutes: value });
   };
 
   const renderCalendarDays = () => {
@@ -302,24 +339,37 @@ export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdate
 
                        <div className="space-y-2">
                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('cal.reminder')}</label>
-                          <div className="relative">
-                               <Bell className="absolute left-4 top-3.5 text-slate-400" size={18} />
-                               <select
-                                  value={editingEvent.reminderMinutes ?? -1}
-                                  onChange={e => {
-                                      const val = parseInt(e.target.value);
-                                      setEditingEvent({...editingEvent, reminderMinutes: val === -1 ? undefined : val});
-                                  }}
-                                  className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
-                               >
-                                  <option value={-1}>{t('cal.none')}</option>
-                                  <option value={0}>{t('cal.atTime')}</option>
-                                  <option value={5}>{t('cal.5min')}</option>
-                                  <option value={15}>{t('cal.15min')}</option>
-                                  <option value={30}>{t('cal.30min')}</option>
-                                  <option value={60}>{t('cal.1hour')}</option>
-                                  <option value={1440}>{t('cal.1day')}</option>
-                               </select>
+                          <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                   <Bell className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                                   <select
+                                      value={isCustomReminder ? 'custom' : (editingEvent.reminderMinutes ?? -1)}
+                                      onChange={e => handleReminderChange(e.target.value)}
+                                      className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
+                                   >
+                                      <option value={-1}>{t('cal.none')}</option>
+                                      <option value={0}>{t('cal.atTime')}</option>
+                                      <option value={5}>{t('cal.5min')}</option>
+                                      <option value={15}>{t('cal.15min')}</option>
+                                      <option value={30}>{t('cal.30min')}</option>
+                                      <option value={60}>{t('cal.1hour')}</option>
+                                      <option value={1440}>{t('cal.1day')}</option>
+                                      <option value="custom">{t('cal.custom')}</option>
+                                   </select>
+                              </div>
+                              {isCustomReminder && (
+                                  <div className="relative w-32">
+                                      <input 
+                                        type="number" 
+                                        min="0"
+                                        value={customMinutes}
+                                        onChange={e => handleCustomMinutesChange(parseInt(e.target.value) || 0)}
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                                        placeholder="Min"
+                                      />
+                                      <span className="absolute right-3 top-3.5 text-xs text-slate-400 font-bold">min</span>
+                                  </div>
+                              )}
                           </div>
                       </div>
 

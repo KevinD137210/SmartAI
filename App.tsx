@@ -154,18 +154,25 @@ const MainLayout: React.FC = () => {
     const checkReminders = () => {
         const now = new Date();
         const updatedEvents = events.map(event => {
-            if (event.reminderMinutes !== undefined && !event.notified && event.time) {
+            if (event.reminderMinutes !== undefined && !event.notified && event.date && event.time) {
                 const eventTime = new Date(`${event.date}T${event.time}`);
-                // Calculate reminder time
+                // Use a proper calculation for reminder time
                 const reminderTime = new Date(eventTime.getTime() - event.reminderMinutes * 60000);
                 
-                // If it's time for reminder (and we are within 5 minutes window to avoid missed checks due to app closed)
-                // But only if current time is PAST the reminder time
-                if (now >= reminderTime && now < eventTime) {
+                // Calculate difference: positive if now is PAST reminderTime
+                const timeDiff = now.getTime() - reminderTime.getTime();
+                
+                // Logic: 
+                // 1. timeDiff >= 0: It is time or past time for the reminder.
+                // 2. timeDiff < 30 * 60 * 1000: We are within a 30-minute window of the reminder time.
+                //    This handles cases where the app was inactive or backgrounded and the precise minute was missed.
+                //    It also prevents alerting for very old events (e.g. from yesterday) when opening the app.
+                if (timeDiff >= 0 && timeDiff < 30 * 60 * 1000) { 
                     if (Notification.permission === 'granted') {
                          new Notification(event.title, {
                             body: event.description || `Event starting at ${event.time}`,
-                            icon: '/favicon.ico'
+                            icon: '/favicon.ico',
+                            requireInteraction: true // Keep notification until user interacts
                          });
                     }
                     return { ...event, notified: true };
@@ -180,7 +187,8 @@ const MainLayout: React.FC = () => {
         }
     };
 
-    const interval = setInterval(checkReminders, 30000); // Check every 30s
+    // Check more frequently (10s) to be closer to "on time", but logic robust enough for throttle
+    const interval = setInterval(checkReminders, 10000); 
     return () => clearInterval(interval);
   }, [events]);
 
@@ -328,6 +336,7 @@ const MainLayout: React.FC = () => {
                                 onDeleteInvoice={deleteInvoice} 
                                 onUpdateStatus={updateInvoiceStatus}
                                 onArchiveClient={archiveClient}
+                                onUpdateProject={updateProject}
                             />
                         } />
                         <Route path="/clients" element={
@@ -346,6 +355,7 @@ const MainLayout: React.FC = () => {
                             <Projects 
                                 projects={projects}
                                 clients={clients}
+                                invoices={invoices}
                                 onAdd={addProject}
                                 onUpdate={updateProject}
                                 onDelete={deleteProject}
