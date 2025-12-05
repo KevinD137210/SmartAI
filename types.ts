@@ -15,6 +15,7 @@ export interface Transaction {
   merchant?: string;
   items?: string;
   location?: string;
+  projectId?: string; // Link expense to a project
 }
 
 export interface InvoiceItem {
@@ -88,12 +89,20 @@ export interface UserProfile {
   defaultTerms?: string;
 }
 
+export interface PriceItem {
+  merchant: string;
+  title: string;
+  price: string;
+  url: string;
+}
+
 export interface PriceCheckResult {
   text: string;
   sources: Array<{
     title: string;
     uri: string;
   }>;
+  items?: PriceItem[];
 }
 
 export type ClientStatus = 'ACTIVE' | 'ARCHIVED';

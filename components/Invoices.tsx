@@ -944,7 +944,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                         
                         {/* Tax ID only for Company Mode */}
                         {currentInvoice.quoteMode === 'COMPANY' && profile.taxId && (
-                            <p className="text-slate-500 text-sm">Tax ID: {profile.taxId}</p>
+                            <p className="text-slate-500 text-sm">{t('common.taxId')}: {profile.taxId}</p>
                         )}
                     </div>
                 </div>
@@ -1025,7 +1025,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                              {/* Show progress payment if set > 0 */}
                              {currentInvoice.progressPaymentPercentage && currentInvoice.progressPaymentPercentage > 0 ? (
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-500">Progress Payment ({currentInvoice.progressPaymentPercentage}%)</span>
+                                    <span className="text-slate-500">{t('inv.progressPayment')} ({currentInvoice.progressPaymentPercentage}%)</span>
                                     <span className="font-medium text-slate-900">{currentInvoice.currency} {(total * (currentInvoice.progressPaymentPercentage / 100)).toLocaleString()}</span>
                                 </div>
                              ) : null}

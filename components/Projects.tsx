@@ -109,7 +109,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
   };
 
   const getClientName = (id: string) => {
-      return clients.find(c => c.id === id)?.name || 'Unknown Client';
+      return clients.find(c => c.id === id)?.name || t('client.unknown');
   };
 
   // Status Badge Colors & Helper

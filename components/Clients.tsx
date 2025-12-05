@@ -177,7 +177,7 @@ export const Clients: React.FC<ClientsProps> = ({ clients, projects = [], onAdd,
                               </div>
                               <div>
                                   <h3 className="font-bold text-lg text-slate-800 dark:text-white line-clamp-1">{client.name}</h3>
-                                  <p className="text-xs text-slate-500 dark:text-slate-400">{client.taxId ? `Tax ID: ${client.taxId}` : ''}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">{client.taxId ? `${t('common.taxId')}: ${client.taxId}` : ''}</p>
                               </div>
                           </div>
                           <div className="flex gap-1">

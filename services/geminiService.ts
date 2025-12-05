@@ -1,5 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
-import { PriceCheckResult, Invoice, DocumentType, Transaction } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { PriceCheckResult, Invoice, DocumentType, Transaction, PriceItem } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -7,47 +7,47 @@ const LOCALE_CONFIG: Record<string, { lang: string, currency: string, instructio
   'zh-TW': { 
     lang: 'Traditional Chinese (Taiwan)', 
     currency: 'New Taiwan Dollar (TWD)',
-    instruction: 'Search strictly for prices in Taiwan (TW). Use major Taiwanese e-commerce sources (e.g. PChome, Momo, Shopee Mall) and major hardware/DIY stores (e.g. B&Q 特力屋, Supermall, Tashin 振宇五金). Report in TWD.'
+    instruction: 'in Taiwan (TW). Sources: PChome, Momo, Shopee TW, Big Go, FindPrice.'
   },
   'en-US': { 
     lang: 'English (US)', 
     currency: 'US Dollar (USD)',
-    instruction: 'Search strictly for prices in the United States (US). Use major US retailers (e.g. Amazon, BestBuy, Walmart, Target) and major home improvement/hardware chains (e.g. Home Depot, Lowe\'s, Menards, Build.com, Ace Hardware). Report in USD.'
+    instruction: 'in United States (US). Sources: Amazon, BestBuy, Walmart, Home Depot, Google Shopping.'
   },
   'ja-JP': { 
     lang: 'Japanese', 
     currency: 'Japanese Yen (JPY)',
-    instruction: 'Search strictly for prices in Japan (JP). Use major Japanese retailers (e.g. Rakuten, Amazon JP, Yodobashi, Bic Camera) and DIY/Home Centers (e.g. Cainz, Kohnan, DCM, Royal Home Center). Report in JPY.'
+    instruction: 'in Japan (JP). Sources: Rakuten, Amazon JP, Kakaku, Yodobashi.'
   },
   'ko-KR': { 
     lang: 'Korean', 
     currency: 'South Korean Won (KRW)',
-    instruction: 'Search strictly for prices in South Korea (KR). Use major Korean retailers (e.g. Coupang, Gmarket, 11Street, SSG) and construction/DIY suppliers (e.g. Ace Hardware KR, House Step, local interior material suppliers). Report in KRW.'
+    instruction: 'in South Korea (KR). Sources: Coupang, Gmarket, Naver Shopping, Danawa.'
   },
   'zh-CN': { 
     lang: 'Simplified Chinese', 
     currency: 'Chinese Yuan (CNY)',
-    instruction: 'Search strictly for prices in Mainland China (CN). Use major Chinese retailers (e.g. JD, Tmall, Taobao) and industrial/construction suppliers (e.g. 1688, Easyhome 居然之家, Red Star Macalline 红星美凯龙). Report in CNY.'
+    instruction: 'in China (CN). Sources: Taobao, JD.com, Tmall.'
   },
   'en-EU': { 
     lang: 'English (Europe)', 
     currency: 'Euro (EUR)',
-    instruction: 'Search for prices in the Eurozone (EU). Use major European retailers (e.g. Amazon, MediaMarkt, Fnac) and DIY chains (e.g. Leroy Merlin, OBI, Castorama, Bauhaus, Hornbach). Report in EUR.'
+    instruction: 'in Europe (EU). Sources: Amazon DE/FR, Idealo, Geizhals.'
   },
   'zh-HK': { 
     lang: 'Traditional Chinese (Hong Kong)', 
     currency: 'Hong Kong Dollar (HKD)',
-    instruction: 'Search strictly for prices in Hong Kong. Use major HK retailers (e.g. HKTVmall, Price.com.hk, Fortress) and hardware/decoration suppliers (e.g. 5metal.com.hk, Mall.builderhood, Thomson Hardware). Report in HKD.'
+    instruction: 'in Hong Kong (HK). Sources: Price.com.hk, HKTVmall, Fortress.'
   },
   'en-SG': { 
     lang: 'English', 
     currency: 'Singapore Dollar (SGD)',
-    instruction: 'Search strictly for prices in Singapore. Use major Singaporean retailers (e.g. Shopee SG, Lazada SG, Amazon SG) and hardware suppliers (e.g. Horme Hardware, Selffix, Home-Fix). Report in SGD.'
+    instruction: 'in Singapore (SG). Sources: Shopee SG, Lazada SG, Amazon SG.'
   },
   'ru-RU': { 
     lang: 'Russian', 
     currency: 'Russian Ruble (RUB)',
-    instruction: 'Search strictly for prices in Russia. Use major Russian retailers (e.g. Ozon, Wildberries, Yandex Market, DNS) and construction/DIY hypermarkets (e.g. Leroy Merlin, Petrovich, Maxidom, Vimos). Report in RUB.'
+    instruction: 'in Russia (RU). Sources: Ozon, Wildberries, Yandex Market.'
   }
 };
 
@@ -58,47 +58,21 @@ export const checkMarketPrice = async (query: string, targetLocale: string): Pro
     // Default to US if code not found
     const config = LOCALE_CONFIG[targetLocale] || LOCALE_CONFIG['en-US'];
 
-    // Construct a specific prompt for price checking with locale context
+    // Strict Anti-Hallucination Prompt
     const prompt = `
-    Role: Professional Market Analyst & Shopping Assistant
-    Task: Analyze the current market price for the product below in the specified target market.
-
-    Product Query: "${query}"
-    Target Market: ${config.instruction}
-    Output Language: ${config.lang} (Ensure the entire response is translated to this language)
-
-    **CRITICAL SEARCH STRATEGY**: 
-    1. **Language Detection & Translation**: The user input "${query}" might NOT be in the local language of the Target Market. Translate if necessary.
-    2. **Broad Source Search**: You MUST find and list **at least 10 different reputable sources** (retailers/websites).
-       - If the item is **Construction/Hardware**, prioritize: ${config.instruction}
-    3. **Links are Mandatory**: For EVERY retailer or source you list, you MUST include the **Direct Product URL** in the text response using Markdown format: [Retailer Name](URL).
-
-    Strict Analysis Rules:
-    1. **NO Second-Hand/Used Prices**: Do NOT include prices from eBay auctions or used marketplaces.
-    2. **High Credibility Sources Only**: Use prices from official brand stores, major authorized retailers, and reputable e-commerce platforms.
-    3. **Precise Translation**: The output must be natural and professional in ${config.lang}.
-
-    Output Format (in ${config.lang}):
-    ### Market Analysis: [Product Name]
-    *(Search Term Used: [Translated Local Term])*
+    Task: You are a Price Intelligence Agent. Search for "Buy ${query} online ${config.instruction}".
     
-    *   **Price Range**: [Low] - [High] ${config.currency}
-    *   **Average Price**: ~[Amount] ${config.currency}
+    CRITICAL RULES:
+    1. **REAL LINKS ONLY**: You must use the ACTUAL URLs returned by the Google Search tool.
+    2. **FORMAT**: Output the data in a strict pipe-separated list.
+    3. **CURRENCY**: ${config.currency}.
+    4. **QUANTITY**: Find 5-10 distinct offers.
+
+    Output Format (Markdown List):
+    * [Merchant Name](ACTUAL_URL) | Product Name | Price
     
-    ### Key Retailers (New Items Only):
-    *   [Retailer Name](URL): [Price] - [Brief Note]
-    *   [Retailer Name](URL): [Price] - [Brief Note]
-    *   [Retailer Name](URL): [Price] - [Brief Note]
-    *   [Retailer Name](URL): [Price] - [Brief Note]
-    *   [Retailer Name](URL): [Price] - [Brief Note]
-    *   [Retailer Name](URL): [Price] - [Brief Note]
-    *   [Retailer Name](URL): [Price] - [Brief Note]
-    *   [Retailer Name](URL): [Price] - [Brief Note]
-    *   (Aim for 8-12 distinct sources)
-    
-    ### Analysis:
-    *   [Point 1: Availability or Price Trend]
-    *   [Point 2: Best value option]
+    Example:
+    * [Amazon](https://amazon.com/dp/123) | Sony WH-1000XM5 | $348.00 USD
     `;
 
     const response = await ai.models.generateContent({
@@ -106,15 +80,36 @@ export const checkMarketPrice = async (query: string, targetLocale: string): Pro
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        temperature: 0.3, // Lower temperature for more factual data
+        temperature: 0.05, // Extremely low temperature for strict adherence
+        systemInstruction: "You are a helpful shopping assistant that only outputs factual price data found via Google Search.",
       },
     });
 
     const text = response.text || "Sorry, I couldn't retrieve price information at this time.";
     
-    // Extract grounding chunks for sources
-    let rawSources: Array<{ title: string; uri: string }> = [];
+    // Parse the text into structured items
+    const items: PriceItem[] = [];
+    const lines = text.split('\n');
     
+    // Improved Regex to handle variations (optional spaces, bullets, different separators)
+    // Matches: * [Merchant](Url) | Title | Price
+    // Also allows for : or - as separators if the model drifts
+    const regex = /^\s*[\*\-]?\s*\[([^\]]+)\]\(([^)]+)\)\s*(?:\||:|-)\s*(.+?)\s*(?:\||:|-)\s*(.+)$/;
+
+    lines.forEach(line => {
+        const match = line.trim().match(regex);
+        if (match) {
+            items.push({
+                merchant: match[1].trim(),
+                url: match[2].trim(),
+                title: match[3].trim(),
+                price: match[4].trim()
+            });
+        }
+    });
+
+    // Extract grounding chunks for sources (Backup)
+    let rawSources: Array<{ title: string; uri: string }> = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
       response.candidates[0].groundingMetadata.groundingChunks.forEach((chunk: any) => {
         if (chunk.web) {
@@ -126,87 +121,38 @@ export const checkMarketPrice = async (query: string, targetLocale: string): Pro
       });
     }
 
-    // Filter and Deduplicate Sources based on Locale and Domain
     const sources = filterSources(rawSources, targetLocale);
 
-    return { text, sources };
+    return { text, sources, items };
 
   } catch (error) {
     console.error("Gemini Price Check Error:", error);
     return {
-      text: targetLocale === 'zh-TW' ? "查詢價格時發生錯誤。請確認您的 API 金鑰是否有效。" : "An error occurred while checking prices. Please ensure your API key is valid.",
+      text: targetLocale === 'zh-TW' ? "查詢價格時發生錯誤。請確認您的 API 金鑰是否有效或網路連線正常。" : "An error occurred while checking prices. Please ensure your API key is valid.",
       sources: []
     };
   }
 };
 
-// Helper function to filter sources
+// Optimized Helper function to filter sources
 function filterSources(sources: { title: string; uri: string }[], targetLocale: string) {
     const seenDomains = new Set<string>();
-    const localePatterns: Record<string, string[]> = {
-        'zh-TW': ['.tw', '/tw/', 'zh-tw'],
-        'ja-JP': ['.jp', '/jp/', 'ja-jp'],
-        'ko-KR': ['.kr', '/kr/', 'ko-kr'],
-        'zh-CN': ['.cn', '/cn/', 'zh-cn'],
-        'en-US': ['.com', '/us/', 'en-us'], 
-        'en-EU': ['.eu', '.de', '.fr', '.it', '.es', '.nl'],
-        'zh-HK': ['.hk', '/hk/'],
-        'en-SG': ['.sg', '/sg/'],
-        'ru-RU': ['.ru', '/ru/']
-    };
-
-    const targetPatterns = localePatterns[targetLocale] || [];
-    
-    // Check if URI matches the target locale
-    const isTargetMatch = (uri: string) => {
-        const lower = uri.toLowerCase();
-        return targetPatterns.some(p => lower.includes(p));
-    };
-
-    // Check if URI matches a conflicting locale
-    const isConflict = (uri: string) => {
-        const lower = uri.toLowerCase();
-        for (const [loc, patterns] of Object.entries(localePatterns)) {
-            if (loc === targetLocale) continue;
-            // Ignore generic .com as a conflict indicator (e.g. .com.tw contains .com but is not a conflict for Taiwan)
-            if (patterns.some(p => p !== '.com' && lower.includes(p))) {
-                 return true;
-            }
-        }
-        return false;
-    };
-
-    // Score and Sort
-    const scored = sources.map(s => {
-        let score = 0;
-        if (isTargetMatch(s.uri)) score += 10;
-        if (isConflict(s.uri)) score -= 100; // Penalize conflicting regions heavily
-        return { ...s, score };
-    });
-
-    // Sort: High score first.
-    scored.sort((a, b) => b.score - a.score);
-
     const filtered: { title: string; uri: string }[] = [];
 
-    for (const item of scored) {
-        if (item.score < -50) continue; // Skip conflicts
-
+    // Simple deduplication by hostname
+    for (const item of sources) {
         try {
-            // Group by hostname (stripping www) to avoid duplicates like www.apple.com and apple.com/jp
             const hostname = new URL(item.uri).hostname.replace(/^www\./, '');
-            
             if (!seenDomains.has(hostname)) {
                 seenDomains.add(hostname);
-                filtered.push({ title: item.title, uri: item.uri });
+                filtered.push(item);
             }
         } catch (e) {
-            // fallback if URL parsing fails
-            filtered.push({ title: item.title, uri: item.uri });
+            filtered.push(item);
         }
     }
 
-    return filtered.slice(0, 20); // Increased limit to 20 to capture more sources
+    return filtered.slice(0, 20); 
 }
 
 export const translateText = async (text: string, targetLocale: string): Promise<string> => {
@@ -214,17 +160,7 @@ export const translateText = async (text: string, targetLocale: string): Promise
         const modelId = 'gemini-2.5-flash';
         const config = LOCALE_CONFIG[targetLocale] || LOCALE_CONFIG['en-US'];
         
-        const prompt = `
-        Role: Professional Business Translator
-        Task: Translate the invoice/quotation item description below to ${config.lang}.
-        Source Text: "${text}"
-        
-        Requirements:
-        1. Maintain professional business terminology.
-        2. Keep product model numbers, technical specs, or proper nouns unchanged if appropriate.
-        3. Output ONLY the translated text, no explanations.
-        4. If the text is already in the target language, improve its professional tone.
-        `;
+        const prompt = `Translate the following text to ${config.lang}. Keep technical terms or product names in original if commonly used. Text: "${text}"`;
 
         const response = await ai.models.generateContent({
             model: modelId,
@@ -233,7 +169,6 @@ export const translateText = async (text: string, targetLocale: string): Promise
 
         return response.text?.trim() || text;
     } catch (error) {
-        console.error("Translation Error:", error);
         return text;
     }
 };
@@ -256,16 +191,21 @@ export const generateInvoiceEmail = async (invoice: Invoice, tone: 'professional
       - Language: ${langName}
 
       The email should politely ask the client to review the attached ${typeStr} (PDF) and proceed with ${actionStr}.
-      
-      Important: Output strictly in JSON format with keys "subject" and "body".
-      The "body" should contain the email content. Use \\n for line breaks. Do not include markdown code blocks in the output, just the raw JSON.
     `;
 
     const response = await ai.models.generateContent({
       model: modelId,
       contents: prompt,
       config: { 
-        responseMimeType: "application/json" 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            subject: { type: Type.STRING },
+            body: { type: Type.STRING }
+          },
+          required: ["subject", "body"]
+        }
       }
     });
 
@@ -287,63 +227,22 @@ export const generateInvoiceEmail = async (invoice: Invoice, tone: 'professional
 export const generateTermsAndConditions = async (docLanguage: string, docType: string, userAddress?: string): Promise<string> => {
   try {
     const modelId = 'gemini-2.5-flash';
-    
-    const regionMap: Record<string, string> = {
-      'en-US': 'United States',
-      'zh-TW': 'Taiwan',
-      'ja-JP': 'Japan',
-      'ko-KR': 'South Korea',
-      'zh-CN': 'China',
-      'en-EU': 'European Union',
-      'zh-HK': 'Hong Kong',
-      'en-SG': 'Singapore',
-      'ru-RU': 'Russia'
-    };
-    const defaultRegion = regionMap[docLanguage] || 'International';
     const typeStr = docType === DocumentType.INVOICE ? 'Invoice' : 'Quotation';
     
-    const langMap: Record<string, string> = {
-        'en-US': 'English (US)',
-        'zh-TW': 'Traditional Chinese (Taiwan)',
-        'ja-JP': 'Japanese',
-        'ko-KR': 'Korean',
-        'zh-CN': 'Simplified Chinese',
-        'en-EU': 'English (Europe)',
-        'zh-HK': 'Traditional Chinese (Hong Kong)',
-        'en-SG': 'English',
-        'ru-RU': 'Russian'
-    };
-    const langPrompt = langMap[docLanguage] || 'English';
-
     const prompt = `
-    Task: Generate concise, precise, and practical standard terms and conditions for a business ${typeStr}.
-    
-    Context:
-    - User Address: "${userAddress || 'Not provided'}"
-    - Document Language Code: ${docLanguage}
-    - Default Region (if address is missing): ${defaultRegion}
-
-    Requirements:
-    1. **Jurisdiction Detection**: If the User Address is provided, automatically detect the country/region from it and apply its standard commercial laws and customs. If not provided or unclear, default to ${defaultRegion}.
-    2. Search for standard legal clauses used in that specific jurisdiction for commercial transactions regarding ${typeStr}s.
-    3. Include key points such as Payment Terms, Delivery/Shipping, Warranty/Liability, Validity of Quote (if applicable), and Dispute Resolution.
-    4. **Output Language**: The output MUST be in ${langPrompt}.
-    5. Format as a professional list of bullet points.
-    6. Do not include introductory text like "Here are the terms...", just the terms themselves.
+    Generate concise standard terms and conditions for a business ${typeStr}.
+    Context: User Address: "${userAddress || 'International'}". Language: ${docLanguage}.
+    Include Payment Terms, Validity, and Liability. Format as bullet points.
     `;
 
     const response = await ai.models.generateContent({
       model: modelId,
       contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }], // Enable grounding to find real treaty/clause examples
-        temperature: 0.4,
-      },
+      config: { temperature: 0.4 },
     });
 
     return response.text?.trim() || "Could not generate terms at this time.";
   } catch (error) {
-    console.error("Gemini Terms Gen Error:", error);
     return "Error generating terms. Please try again.";
   }
 };
@@ -352,40 +251,24 @@ export const analyzeReceipt = async (imageFile: File): Promise<Partial<Transacti
   try {
     const modelId = 'gemini-2.5-flash';
     
-    // Convert file to base64
     const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(imageFile);
         reader.onload = () => {
             const result = reader.result as string;
-            // Split to get only base64 part
             resolve(result.split(',')[1]); 
         };
         reader.onerror = error => reject(error);
     });
 
     const prompt = `
-    Analyze this receipt image to extract transaction details.
+    Analyze this receipt image. Extract data into the specified JSON structure.
     
-    Requirements:
-    1. **Items Summary**: The 'items' field MUST be a very short, concise keyword summary (max 5-6 words). 
-       - Do NOT list every single product. 
-       - Do NOT include SKU numbers or prices in this field.
-       - Example: "Grocery Shopping", "Office Stationery", "Dinner at McDonald's", "iPhone 15 Pro Case".
-    2. **Merchant**: Extract the clear store name.
-    3. **Date**: YYYY-MM-DD format. If missing, use today.
-    4. **Amount**: Total grand total.
-    
-    Return JSON:
-    {
-      "amount": number,
-      "date": "string",
-      "merchant": "string",
-      "items": "string",
-      "location": "string",
-      "category": "string", // One of: Food, Transport, Rent, Utilities, Entertainment, Shopping, Health, Other, Salary, Freelance, Investment, Sales
-      "type": "string" // INCOME or EXPENSE
-    }
+    Rules:
+    1. Field 'type' should be 'EXPENSE'.
+    2. Field 'date' MUST be in 'YYYY-MM-DD' format. If unsure of year, use current year.
+    3. Field 'amount' must be a number.
+    4. Summarize items into a string.
     `;
 
     const response = await ai.models.generateContent({
@@ -399,7 +282,23 @@ export const analyzeReceipt = async (imageFile: File): Promise<Partial<Transacti
                 ]
             }
         ],
-        config: { responseMimeType: 'application/json' }
+        config: { 
+            systemInstruction: "You are an expert financial accountant data entry specialist.",
+            responseMimeType: 'application/json',
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    amount: { type: Type.NUMBER },
+                    date: { type: Type.STRING },
+                    merchant: { type: Type.STRING },
+                    items: { type: Type.STRING },
+                    location: { type: Type.STRING },
+                    category: { type: Type.STRING },
+                    type: { type: Type.STRING }
+                },
+                required: ["amount", "date"]
+            }
+        }
     });
 
     const text = response.text;
@@ -416,7 +315,6 @@ export const identifyProductFromImage = async (imageFile: File, targetLocale: st
   try {
     const modelId = 'gemini-2.5-flash';
     
-    // Convert file to base64
     const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(imageFile);
@@ -427,19 +325,7 @@ export const identifyProductFromImage = async (imageFile: File, targetLocale: st
         reader.onerror = error => reject(error);
     });
 
-    const config = LOCALE_CONFIG[targetLocale] || LOCALE_CONFIG['en-US'];
-
-    const prompt = `
-    Role: AI Personal Shopper
-    Task: Identify the main commercial product in this image.
-    Target Market Language: ${config.lang}
-
-    Instructions:
-    1. Analyze the image to identify the main object or product.
-    2. Return ONLY the precise product name to be used for a shopping search.
-    3. Ensure the name is in the ${config.lang}.
-    4. Do not include markdown code blocks or explanations, just the plain text name.
-    `;
+    const prompt = `Identify the main commercial product. Return ONLY the specific product model name in the language of ${targetLocale}. Do not add extra words.`;
 
     const response = await ai.models.generateContent({
         model: modelId,
@@ -456,7 +342,6 @@ export const identifyProductFromImage = async (imageFile: File, targetLocale: st
 
     return response.text?.trim() || "";
   } catch (error) {
-    console.error("Product ID Error:", error);
     return "";
   }
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, PieChart, ShoppingBag, Menu, X, Sun, Moon, Monitor, Settings as SettingsIcon, Home, Users, Calendar as CalendarIcon, Briefcase } from 'lucide-react';
+import { LayoutDashboard, FileText, PieChart, ShoppingBag, Menu, X, Sun, Moon, Monitor, Settings as SettingsIcon, Home, Users, Calendar as CalendarIcon, Briefcase, FileSpreadsheet } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { Bookkeeping } from './components/Bookkeeping';
 import { Invoices } from './components/Invoices';
@@ -9,6 +9,7 @@ import { Settings } from './components/Settings';
 import { Clients } from './components/Clients';
 import { Calendar } from './components/Calendar';
 import { Projects } from './components/Projects';
+import { Reports } from './components/Reports';
 import { Transaction, Invoice, InvoiceStatus, Client, CalendarEvent, Project } from './types';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -72,6 +73,7 @@ const getPageInfo = (pathname: string, t: (key: string) => string) => {
       '/settings': { title: t('set.title'), subtitle: t('set.subtitle') },
       '/clients': { title: t('client.title'), subtitle: t('client.subtitle') },
       '/calendar': { title: t('cal.title'), subtitle: t('cal.subtitle') },
+      '/reports': { title: t('rep.title'), subtitle: t('rep.subtitle') },
     };
     return headers[pathname];
 };
@@ -230,8 +232,8 @@ const MainLayout: React.FC = () => {
         <aside className="hidden lg:flex flex-col w-72 p-6">
             <div className="flex flex-col h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-3xl shadow-2xl shadow-indigo-500/5">
                 {/* Redesigned Sidebar Header: Vertical Layout */}
-                <div className="flex flex-col items-center gap-5 px-6 py-10 border-b border-slate-100 dark:border-slate-800/50">
-                    <div className="w-20 h-20 p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg shadow-indigo-500/10 dark:shadow-indigo-500/20 ring-1 ring-slate-100 dark:ring-slate-700">
+                <Link to="/" className="flex flex-col items-center gap-5 px-6 py-10 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group">
+                    <div className="w-20 h-20 p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg shadow-indigo-500/10 dark:shadow-indigo-500/20 ring-1 ring-slate-100 dark:ring-slate-700 group-hover:scale-105 transition-transform">
                         <Logo className="w-full h-full" />
                     </div>
                     <div className="text-center">
@@ -244,16 +246,9 @@ const MainLayout: React.FC = () => {
                             <span className="h-[1px] w-3 bg-slate-400 dark:bg-slate-500"></span>
                         </div>
                     </div>
-                </div>
+                </Link>
 
                 <nav className="flex-1 px-4 space-y-3 mt-6 overflow-y-auto no-scrollbar">
-                    <NavigationLink to="/" icon={LayoutDashboard} label={t('nav.dashboard')} />
-                    <NavigationLink to="/bookkeeping" icon={PieChart} label={t('nav.bookkeeping')} />
-                    <NavigationLink to="/clients" icon={Users} label={t('nav.clients')} />
-                    <NavigationLink to="/projects" icon={Briefcase} label={t('nav.projects')} />
-                    <NavigationLink to="/invoices" icon={FileText} label={t('nav.invoices')} />
-                    <NavigationLink to="/calendar" icon={CalendarIcon} label={t('nav.calendar')} />
-                    <NavigationLink to="/price-check" icon={ShoppingBag} label={t('nav.priceCheck')} />
                     <NavigationLink to="/settings" icon={SettingsIcon} label={t('nav.settings')} />
                 </nav>
 
@@ -300,13 +295,6 @@ const MainLayout: React.FC = () => {
                         <ThemeToggle />
                     </div>
                     <nav className="space-y-4">
-                         <NavigationLink to="/" icon={LayoutDashboard} label={t('nav.dashboard')} onClick={() => setIsMobileMenuOpen(false)}/>
-                        <NavigationLink to="/bookkeeping" icon={PieChart} label={t('nav.bookkeeping')} onClick={() => setIsMobileMenuOpen(false)}/>
-                        <NavigationLink to="/clients" icon={Users} label={t('nav.clients')} onClick={() => setIsMobileMenuOpen(false)}/>
-                        <NavigationLink to="/projects" icon={Briefcase} label={t('nav.projects')} onClick={() => setIsMobileMenuOpen(false)}/>
-                        <NavigationLink to="/invoices" icon={FileText} label={t('nav.invoices')} onClick={() => setIsMobileMenuOpen(false)}/>
-                        <NavigationLink to="/calendar" icon={CalendarIcon} label={t('nav.calendar')} onClick={() => setIsMobileMenuOpen(false)}/>
-                        <NavigationLink to="/price-check" icon={ShoppingBag} label={t('nav.priceCheck')} onClick={() => setIsMobileMenuOpen(false)}/>
                         <NavigationLink to="/settings" icon={SettingsIcon} label={t('nav.settings')} onClick={() => setIsMobileMenuOpen(false)}/>
                     </nav>
                 </div>
@@ -326,6 +314,7 @@ const MainLayout: React.FC = () => {
                         <Route path="/bookkeeping" element={
                             <Bookkeeping 
                                 transactions={transactions} 
+                                projects={projects}
                                 onAddTransaction={addTransaction} 
                                 onDeleteTransaction={deleteTransaction} 
                             />
@@ -371,6 +360,14 @@ const MainLayout: React.FC = () => {
                                 onAddEvent={addEvent}
                                 onUpdateEvent={updateEvent}
                                 onDeleteEvent={deleteEvent}
+                            />
+                        } />
+                        <Route path="/reports" element={
+                            <Reports 
+                                transactions={transactions}
+                                invoices={invoices}
+                                projects={projects}
+                                clients={clients}
                             />
                         } />
                         <Route path="/price-check" element={<PriceCheck />} />

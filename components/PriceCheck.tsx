@@ -1,62 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Search, Loader2, ExternalLink, Tag, Sparkles, Globe, ChevronDown, Camera } from 'lucide-react';
+import { Search, Loader2, ExternalLink, Tag, Sparkles, Globe, ChevronDown, Camera, ShoppingBag, ArrowRight } from 'lucide-react';
 import { checkMarketPrice, identifyProductFromImage } from '../services/geminiService';
-import { PriceCheckResult } from '../types';
+import { PriceCheckResult, PriceItem } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
-
-// Linkify Component to handle markdown style links [Label](URL) and raw URLs
-const Linkify: React.FC<{ text: string }> = ({ text }) => {
-  const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
-  
-  // Split by markdown links first
-  const elements: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = markdownLinkRegex.exec(text)) !== null) {
-    // Text before match
-    if (match.index > lastIndex) {
-      elements.push(text.substring(lastIndex, match.index));
-    }
-    // Link
-    elements.push(
-      <a 
-        key={match.index} 
-        href={match[2]} 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold"
-      >
-        {match[1]}
-      </a>
-    );
-    lastIndex = markdownLinkRegex.lastIndex;
-  }
-  // Remaining text
-  if (lastIndex < text.length) {
-    elements.push(text.substring(lastIndex));
-  }
-
-  // If we processed markdown links, return them.
-  // Otherwise, or in addition, we might want to scan for raw URLs in the text chunks.
-  // For simplicity, let's process the text parts for raw URLs if they are simple strings.
-  
-  const processRawUrls = (node: React.ReactNode): React.ReactNode => {
-      if (typeof node !== 'string') return node;
-      
-      const urlRegex = /(https?:\/\/[^\s\)]+)/g;
-      const parts = node.split(urlRegex);
-      if (parts.length === 1) return node;
-
-      return parts.map((part, i) => 
-          urlRegex.test(part) ? (
-              <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline break-all">{part}</a>
-          ) : part
-      );
-  };
-
-  return <>{elements.map((el, i) => <React.Fragment key={i}>{processRawUrls(el)}</React.Fragment>)}</>;
-};
 
 export const PriceCheck: React.FC = () => {
   const { t, language } = useLanguage();
@@ -87,13 +33,12 @@ export const PriceCheck: React.FC = () => {
 
     setIdentifying(true);
     setResult(null);
-    setQuery(''); // Clear previous query
+    setQuery(''); 
 
     try {
         const productName = await identifyProductFromImage(file, targetLocale);
         if (productName) {
             setQuery(productName);
-            // Automatically trigger search with the identified name
             setIdentifying(false);
             setLoading(true);
             const data = await checkMarketPrice(productName, targetLocale);
@@ -107,9 +52,13 @@ export const PriceCheck: React.FC = () => {
         console.error("Image identification failed", error);
         setIdentifying(false);
     } finally {
-        // Reset input
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const getFallbackSearchUrl = (item: PriceItem) => {
+      const searchQuery = encodeURIComponent(`${item.merchant} ${item.title}`);
+      return `https://www.google.com/search?q=${searchQuery}`;
   };
 
   const LOCALE_OPTIONS = [
@@ -135,7 +84,6 @@ export const PriceCheck: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 p-2 rounded-3xl shadow-xl shadow-indigo-100 dark:shadow-indigo-900/10 border border-slate-100 dark:border-slate-800">
           <form onSubmit={handleSearch} className="flex items-center gap-2">
             
-            {/* Input Group: Search Icon + Input + Camera Button */}
             <div className="relative flex-1 flex items-center bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-transparent focus-within:border-indigo-500/20 focus-within:bg-slate-50 dark:focus-within:bg-slate-950 transition-all">
                 <div className="pl-4 text-slate-400 dark:text-slate-500 pointer-events-none">
                     <Search size={20} />
@@ -149,7 +97,6 @@ export const PriceCheck: React.FC = () => {
                     disabled={loading || identifying}
                 />
                 
-                {/* Camera Button attached to input */}
                 <div className="pr-2">
                     <button
                         type="button"
@@ -194,7 +141,7 @@ export const PriceCheck: React.FC = () => {
                 </div>
             </div>
 
-            {/* Country Selector - Mobile (Compact Icon Only) */}
+            {/* Country Selector - Mobile (Compact) */}
             <div className="sm:hidden relative">
                  <select
                     value={targetLocale}
@@ -208,7 +155,6 @@ export const PriceCheck: React.FC = () => {
                         </option>
                     ))}
                 </select>
-                {/* Visual Overlay for Mobile Select to show flag centered */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-slate-100 dark:bg-slate-800 rounded-2xl text-xl">
                     {LOCALE_OPTIONS.find(o => o.code === targetLocale)?.flag}
                 </div>
@@ -231,56 +177,85 @@ export const PriceCheck: React.FC = () => {
 
       {result && (
         <div className="space-y-6 animate-fadeIn">
-          {/* Result Content */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 md:p-10 shadow-lg border border-slate-100 dark:border-slate-800 relative overflow-hidden">
-            {/* Background decoration */}
-            <div className="absolute top-0 right-0 p-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none">
-              <Tag size={200} />
-            </div>
-            
-            <div className="flex justify-between items-start mb-6">
-                <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400">
-                    <Sparkles size={16} />
-                </span>
+          <div className="flex justify-between items-center">
+             <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <Sparkles className="text-indigo-500" size={20} />
                 {t('price.result')}
-                </h3>
-                <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold rounded-full border border-slate-200 dark:border-slate-700 flex items-center gap-2">
-                    {LOCALE_OPTIONS.find(l => l.code === targetLocale)?.flag}
-                    {LOCALE_OPTIONS.find(l => l.code === targetLocale)?.label}
-                </span>
-            </div>
-            
-            <div className="prose prose-slate dark:prose-invert max-w-none leading-relaxed whitespace-pre-wrap text-slate-600 dark:text-slate-300">
-              <Linkify text={result.text} />
-            </div>
+             </h3>
+             <span className="text-xs text-slate-400">
+                {result.items ? `${result.items.length} ${t('price.optionsFound')}` : t('price.checking')}
+             </span>
           </div>
 
+          {/* Primary Results: Structured Items */}
+          {result.items && result.items.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {result.items.map((item, idx) => (
+                      <div 
+                        key={idx}
+                        className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 hover:shadow-lg dark:hover:shadow-indigo-900/10 hover:border-indigo-500 dark:hover:border-indigo-400 transition-all group flex flex-col justify-between"
+                      >
+                         <div className="mb-4">
+                             <div className="flex justify-between items-start gap-4 mb-2">
+                                <h4 className="font-bold text-slate-800 dark:text-white line-clamp-2">
+                                    {item.title}
+                                </h4>
+                                <a 
+                                    href={getFallbackSearchUrl(item)}
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-slate-300 dark:text-slate-600 shrink-0 hover:text-indigo-500 transition-colors p-1"
+                                    title="Search on Google if link is broken"
+                                >
+                                    <Search size={16} />
+                                </a>
+                             </div>
+                             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <ShoppingBag size={12} /> {item.merchant}
+                             </div>
+                         </div>
+                         <div className="pt-3 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
+                             <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                                 {item.price}
+                             </div>
+                             <a 
+                                href={item.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-indigo-500 font-bold hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                             >
+                                 {t('price.buyNow')} <ArrowRight size={12} />
+                             </a>
+                         </div>
+                      </div>
+                  ))}
+              </div>
+          ) : (
+             // Fallback to text if structured parsing failed
+             <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-lg border border-slate-100 dark:border-slate-800">
+                <div className="prose prose-slate dark:prose-invert max-w-none whitespace-pre-wrap">
+                    {result.text}
+                </div>
+             </div>
+          )}
+
+          {/* Secondary Sources (Grounding) */}
           {result.sources.length > 0 && (
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-8 border border-slate-200 dark:border-slate-800">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">
+            <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800/50">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
                 {t('price.sources')}
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-wrap gap-2">
                 {result.sources.map((source, idx) => (
                   <a
                     key={idx}
                     href={source.uri}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-start gap-4 p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg dark:hover:shadow-indigo-900/20 transition-all group"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate max-w-[200px]"
                   >
-                    <div className="mt-1 p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-500 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                      <ExternalLink size={18} />
-                    </div>
-                    <div className="overflow-hidden">
-                      <div className="font-bold text-slate-800 dark:text-slate-200 line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                        {source.title}
-                      </div>
-                      <div className="text-xs text-slate-400 dark:text-slate-500 mt-1 line-clamp-1 font-mono">
-                        {source.uri}
-                      </div>
-                    </div>
+                    <Globe size={12} />
+                    <span className="truncate">{source.title}</span>
                   </a>
                 ))}
               </div>

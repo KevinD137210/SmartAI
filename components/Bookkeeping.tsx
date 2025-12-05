@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { Transaction, TransactionType } from '../types';
-import { Plus, Trash2, ArrowUpCircle, ArrowDownCircle, Calendar, Tag, Loader2, MapPin, ShoppingBag, Store, X, ScanLine, Camera, Image as ImageIcon } from 'lucide-react';
+import { Transaction, TransactionType, Project } from '../types';
+import { Plus, Trash2, ArrowUpCircle, ArrowDownCircle, Calendar, Tag, Loader2, MapPin, ShoppingBag, Store, X, ScanLine, Camera, Image as ImageIcon, Briefcase, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzeReceipt } from '../services/geminiService';
 
 interface BookkeepingProps {
   transactions: Transaction[];
+  projects?: Project[];
   onAddTransaction: (t: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
 }
@@ -15,7 +16,7 @@ const CATEGORIES = {
   [TransactionType.EXPENSE]: ['Food', 'Transport', 'Rent', 'Utilities', 'Entertainment', 'Shopping', 'Health', 'Other']
 };
 
-export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTransaction, onDeleteTransaction }) => {
+export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects = [], onAddTransaction, onDeleteTransaction }) => {
   const { t } = useLanguage();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<TransactionType | 'ALL'>('ALL');
@@ -34,7 +35,8 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
     amount: 0,
     merchant: '',
     items: '',
-    location: ''
+    location: '',
+    projectId: ''
   });
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -50,7 +52,8 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
       category: newTx.category!,
       merchant: newTx.merchant,
       items: newTx.items,
-      location: newTx.location
+      location: newTx.location,
+      projectId: newTx.projectId
     });
     
     setIsModalOpen(false);
@@ -66,7 +69,8 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
       amount: 0,
       merchant: '',
       items: '',
-      location: ''
+      location: '',
+      projectId: ''
     });
   };
 
@@ -78,10 +82,14 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
       try {
           const result = await analyzeReceipt(file);
           
+          // Data Sanitization
+          const parsedAmount = typeof result.amount === 'number' ? result.amount : parseFloat(result.amount as unknown as string) || 0;
+          const parsedDate = result.date && /^\d{4}-\d{2}-\d{2}$/.test(result.date) ? result.date : new Date().toISOString().split('T')[0];
+
           setNewTx(prev => ({
               ...prev,
-              amount: result.amount || prev.amount,
-              date: result.date || prev.date,
+              amount: parsedAmount,
+              date: parsedDate,
               description: result.items || result.merchant || prev.description, // Prioritize summarized items for main description
               merchant: result.merchant || '',
               items: result.items || '',
@@ -103,6 +111,9 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
   const filteredTransactions = transactions
     .filter(t => filterType === 'ALL' || t.type === filterType)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Filter Active Projects for selection
+  const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -198,6 +209,12 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
                                     <span className="truncate max-w-[200px]">{tx.items}</span>
                                 </div>
                             )}
+                            {tx.projectId && (
+                                <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                                    <Briefcase size={10} className="shrink-0" />
+                                    <span>{projects.find(p => p.id === tx.projectId)?.name}</span>
+                                </div>
+                            )}
                         </div>
                     </td>
                     <td className="px-8 py-5 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
@@ -256,7 +273,7 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
                             <p className="text-slate-800 dark:text-slate-200 font-medium">{viewTx.description}</p>
                         </div>
                         
-                        {(viewTx.merchant || viewTx.location) && (
+                        {(viewTx.merchant || viewTx.location || viewTx.projectId) && (
                             <div className="grid grid-cols-2 gap-4">
                                 {viewTx.merchant && (
                                     <div>
@@ -271,6 +288,14 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">{t('book.location')}</label>
                                         <p className="text-slate-800 dark:text-slate-200 flex items-center gap-2">
                                             <MapPin size={14} className="text-rose-500"/> {viewTx.location}
+                                        </p>
+                                    </div>
+                                )}
+                                {viewTx.projectId && (
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">{t('inv.project')}</label>
+                                        <p className="text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                            <Briefcase size={14} className="text-amber-500"/> {projects.find(p => p.id === viewTx.projectId)?.name}
                                         </p>
                                     </div>
                                 )}
@@ -311,68 +336,106 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
 
             <div className="p-6 overflow-y-auto custom-scrollbar">
                 
-                {/* Dual AI Scanner Section */}
-                <div className="mb-8 grid grid-cols-2 gap-4">
-                    {/* Hidden Inputs */}
-                    <input 
-                        type="file" 
-                        ref={fileInputRef}
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        disabled={isAnalyzing}
-                    />
-                    <input 
-                        type="file" 
-                        ref={cameraInputRef}
-                        accept="image/*"
-                        capture="environment" // Forces camera on mobile
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        disabled={isAnalyzing}
-                    />
+                {/* Top Section: Dual AI Scanner & Project Selector */}
+                <div className="mb-6 space-y-4">
+                    {/* Scanner Buttons */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Hidden Inputs */}
+                        <input 
+                            type="file" 
+                            ref={fileInputRef}
+                            accept="image/*"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            disabled={isAnalyzing}
+                        />
+                        <input 
+                            type="file" 
+                            ref={cameraInputRef}
+                            accept="image/*"
+                            capture="environment" // Forces camera on mobile
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            disabled={isAnalyzing}
+                        />
 
-                    {/* Camera Button */}
-                    <button 
-                        onClick={() => cameraInputRef.current?.click()}
-                        disabled={isAnalyzing}
-                        className="relative group w-full h-28 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2"
-                    >
-                        {isAnalyzing ? (
-                            <div className="flex flex-col items-center gap-2 animate-pulse">
-                                <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={24} />
-                                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{t('book.analyzing')}</span>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="p-2.5 bg-indigo-600 text-white rounded-full shadow-lg group-hover:scale-110 transition-transform">
-                                    <Camera size={20} />
+                        {/* Camera Button */}
+                        <button 
+                            onClick={() => cameraInputRef.current?.click()}
+                            disabled={isAnalyzing}
+                            className="relative group w-full h-28 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800 hover:border-indigo-500 dark:hover:border-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2"
+                        >
+                            {isAnalyzing ? (
+                                <div className="flex flex-col items-center gap-2 animate-pulse">
+                                    <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={24} />
+                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{t('book.analyzing')}</span>
                                 </div>
-                                <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300">Camera Scan</span>
-                            </>
-                        )}
-                    </button>
+                            ) : (
+                                <>
+                                    <div className="p-2.5 bg-indigo-600 text-white rounded-full shadow-lg group-hover:scale-110 transition-transform">
+                                        <Camera size={20} />
+                                    </div>
+                                    <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300">{t('book.cameraScan')}</span>
+                                </>
+                            )}
+                        </button>
 
-                    {/* Upload Button */}
-                    <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isAnalyzing}
-                        className="relative group w-full h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 bg-slate-50/50 dark:bg-slate-800/30 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2"
-                    >
-                        {isAnalyzing ? (
-                            <div className="flex flex-col items-center gap-2 animate-pulse">
-                                <Loader2 className="animate-spin text-slate-500 dark:text-slate-400" size={24} />
-                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('book.analyzing')}</span>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="p-2.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full shadow-sm border border-slate-200 dark:border-slate-600 group-hover:scale-110 transition-transform">
-                                    <ImageIcon size={20} />
+                        {/* Upload Button */}
+                        <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isAnalyzing}
+                            className="relative group w-full h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 bg-slate-50/50 dark:bg-slate-800/30 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2"
+                        >
+                            {isAnalyzing ? (
+                                <div className="flex flex-col items-center gap-2 animate-pulse">
+                                    <Loader2 className="animate-spin text-slate-500 dark:text-slate-400" size={24} />
+                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{t('book.analyzing')}</span>
                                 </div>
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Upload / Album</span>
-                            </>
+                            ) : (
+                                <>
+                                    <div className="p-2.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full shadow-sm border border-slate-200 dark:border-slate-600 group-hover:scale-110 transition-transform">
+                                        <ImageIcon size={20} />
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{t('book.uploadAlbum')}</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Project Selector - Always visible now */}
+                    <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-2xl p-4 flex items-center gap-4 transition-all">
+                        <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
+                            <Briefcase size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <label className="text-[10px] font-bold text-amber-800 dark:text-amber-200 uppercase tracking-wider block mb-1">
+                                {t('book.projectExpense')}
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={newTx.projectId || ''}
+                                    onChange={e => setNewTx({...newTx, projectId: e.target.value})}
+                                    className="w-full bg-transparent font-bold text-slate-700 dark:text-slate-200 focus:outline-none appearance-none cursor-pointer truncate pr-6"
+                                >
+                                    <option value="">{t('book.selectProjectPlaceholder')}</option>
+                                    {activeProjects.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-amber-600 dark:text-amber-400">
+                                    <ChevronDown size={14} />
+                                </div>
+                            </div>
+                        </div>
+                        {newTx.projectId && (
+                            <button 
+                                onClick={() => setNewTx({...newTx, projectId: ''})}
+                                className="p-1.5 hover:bg-amber-200/50 dark:hover:bg-amber-800/50 rounded-full text-amber-700 dark:text-amber-400 transition-colors"
+                            >
+                                <X size={14} />
+                            </button>
                         )}
-                    </button>
+                    </div>
                 </div>
 
                 <form className="space-y-6">
@@ -383,15 +446,15 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, onAddTra
                             <button
                                 type="button"
                                 onClick={() => setNewTx(p => ({...p, type: TransactionType.EXPENSE, category: CATEGORIES[TransactionType.EXPENSE][0]}))}
-                                className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${newTx.type === TransactionType.EXPENSE ? 'bg-white dark:bg-slate-700 text-rose-500 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${newTx.type === TransactionType.EXPENSE ? 'bg-white dark:bg-slate-700 text-rose-500 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                             >
                                 <ArrowDownCircle size={16} />
-                                {t('book.expense')}
+                                {t('book.personalExpense')}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setNewTx(p => ({...p, type: TransactionType.INCOME, category: CATEGORIES[TransactionType.INCOME][0]}))}
-                                className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${newTx.type === TransactionType.INCOME ? 'bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${newTx.type === TransactionType.INCOME ? 'bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                             >
                                 <ArrowUpCircle size={16} />
                                 {t('book.income')}

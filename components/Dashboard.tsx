@@ -215,12 +215,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
                 <span className="text-[11px] font-bold text-slate-400">{t('dash.calendar')}</span>
             </Link>
 
-            <div className="flex flex-col items-center justify-center gap-2 bg-[#111827] hover:bg-[#1f2937] border border-slate-800 rounded-2xl py-4 transition-all group cursor-pointer">
+            <Link to="/reports" className="flex flex-col items-center justify-center gap-2 bg-[#111827] hover:bg-[#1f2937] border border-slate-800 rounded-2xl py-4 transition-all group cursor-pointer">
                 <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 group-hover:scale-110 transition-transform">
                     <FileBarChart size={20} />
                 </div>
                 <span className="text-[11px] font-bold text-slate-400">{t('dash.reports')}</span>
-            </div>
+            </Link>
          </div>
       </div>
 
