@@ -81,19 +81,19 @@ export const PriceCheck: React.FC = () => {
             {t('price.helper')}
         </p>
 
-        <div className="bg-white dark:bg-slate-900 p-2 rounded-3xl shadow-xl shadow-indigo-100 dark:shadow-indigo-900/10 border border-slate-100 dark:border-slate-800">
-          <form onSubmit={handleSearch} className="flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-[2rem] shadow-2xl shadow-indigo-500/10 border border-slate-100 dark:border-slate-800">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-stretch gap-3">
             
-            <div className="relative flex-1 flex items-center bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-transparent focus-within:border-indigo-500/20 focus-within:bg-slate-50 dark:focus-within:bg-slate-950 transition-all">
+            <div className="relative flex-1 flex items-center bg-slate-50 dark:bg-slate-950 rounded-2xl border border-transparent focus-within:border-indigo-500/50 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all">
                 <div className="pl-4 text-slate-400 dark:text-slate-500 pointer-events-none">
-                    <Search size={20} />
+                    <Search size={22} />
                 </div>
                 <input
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={identifying ? t('price.identify') : t('price.placeholder')}
-                    className="w-full pl-3 pr-2 py-3.5 bg-transparent outline-none text-base md:text-lg text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 min-w-0"
+                    className="w-full pl-3 pr-2 py-4 bg-transparent outline-none text-lg text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 min-w-0"
                     disabled={loading || identifying}
                 />
                 
@@ -102,7 +102,7 @@ export const PriceCheck: React.FC = () => {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={loading || identifying}
-                        className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors hover:bg-white dark:hover:bg-slate-800 rounded-xl"
+                        className="p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors hover:bg-white dark:hover:bg-slate-800 rounded-xl"
                         title={t('price.photoSearch')}
                     >
                         {identifying ? <Loader2 className="animate-spin" size={20}/> : <Camera size={20} />}
@@ -119,70 +119,53 @@ export const PriceCheck: React.FC = () => {
                 onChange={handleImageUpload}
             />
             
-            {/* Country Selector - Desktop */}
-            <div className="relative shrink-0 hidden sm:block max-w-[150px]">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
-                    <Globe size={16} />
+            <div className="flex gap-3 h-full">
+                {/* Country Selector */}
+                <div className="relative shrink-0 w-full sm:w-[160px]">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none z-10">
+                        <Globe size={18} />
+                    </div>
+                    <select
+                        value={targetLocale}
+                        onChange={(e) => setTargetLocale(e.target.value)}
+                        className="appearance-none w-full h-full pl-10 pr-10 py-4 bg-slate-50 dark:bg-slate-950 border border-transparent focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl text-base font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                        disabled={loading || identifying}
+                    >
+                        {LOCALE_OPTIONS.map(opt => (
+                            <option key={opt.code} value={opt.code} className="bg-white dark:bg-slate-900">
+                                {opt.flag} {opt.label}
+                            </option>
+                        ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                        <ChevronDown size={16} />
+                    </div>
                 </div>
-                <select
-                    value={targetLocale}
-                    onChange={(e) => setTargetLocale(e.target.value)}
-                    className="w-full appearance-none pl-9 pr-8 py-3.5 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                    disabled={loading || identifying}
-                >
-                    {LOCALE_OPTIONS.map(opt => (
-                        <option key={opt.code} value={opt.code}>
-                            {opt.label}
-                        </option>
-                    ))}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    <ChevronDown size={14} />
-                </div>
-            </div>
 
-            {/* Country Selector - Mobile (Compact) */}
-            <div className="sm:hidden relative">
-                 <select
-                    value={targetLocale}
-                    onChange={(e) => setTargetLocale(e.target.value)}
-                    className="appearance-none w-12 h-12 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-2xl text-xl outline-none border-none text-center cursor-pointer p-0 opacity-0"
-                    disabled={loading || identifying}
+                <button
+                type="submit"
+                disabled={loading || identifying || !query.trim()}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-2xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 shrink-0"
                 >
-                    {LOCALE_OPTIONS.map(opt => (
-                        <option key={opt.code} value={opt.code}>
-                            {opt.flag}
-                        </option>
-                    ))}
-                </select>
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-slate-100 dark:bg-slate-800 rounded-2xl text-xl">
-                    {LOCALE_OPTIONS.find(o => o.code === targetLocale)?.flag}
-                </div>
+                {loading || identifying ? (
+                    <Loader2 className="animate-spin" size={22} /> 
+                ) : (
+                    <span className="whitespace-nowrap text-lg">{t('price.button')}</span>
+                )}
+                </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || identifying || !query.trim()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 md:px-8 py-3.5 rounded-2xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-indigo-500/25 shrink-0"
-            >
-              {loading || identifying ? (
-                  <Loader2 className="animate-spin" size={20} /> 
-              ) : (
-                  <span className="whitespace-nowrap">{t('price.button')}</span>
-              )}
-            </button>
           </form>
         </div>
       </div>
 
       {result && (
         <div className="space-y-6 animate-fadeIn">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center px-2">
              <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <Sparkles className="text-indigo-500" size={20} />
+                <Sparkles className="text-indigo-500" size={22} />
                 {t('price.result')}
              </h3>
-             <span className="text-xs text-slate-400">
+             <span className="text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700">
                 {result.items ? `${result.items.length} ${t('price.optionsFound')}` : t('price.checking')}
              </span>
           </div>
@@ -193,11 +176,11 @@ export const PriceCheck: React.FC = () => {
                   {result.items.map((item, idx) => (
                       <div 
                         key={idx}
-                        className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 hover:shadow-lg dark:hover:shadow-indigo-900/10 hover:border-indigo-500 dark:hover:border-indigo-400 transition-all group flex flex-col justify-between"
+                        className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all group flex flex-col justify-between"
                       >
                          <div className="mb-4">
                              <div className="flex justify-between items-start gap-4 mb-2">
-                                <h4 className="font-bold text-slate-800 dark:text-white line-clamp-2">
+                                <h4 className="font-bold text-lg text-slate-800 dark:text-white line-clamp-2 leading-tight">
                                     {item.title}
                                 </h4>
                                 <a 
@@ -207,24 +190,24 @@ export const PriceCheck: React.FC = () => {
                                     className="text-slate-300 dark:text-slate-600 shrink-0 hover:text-indigo-500 transition-colors p-1"
                                     title="Search on Google if link is broken"
                                 >
-                                    <Search size={16} />
+                                    <Search size={18} />
                                 </a>
                              </div>
-                             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                <ShoppingBag size={12} /> {item.merchant}
+                             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                <ShoppingBag size={12} className="text-indigo-500" /> {item.merchant}
                              </div>
                          </div>
-                         <div className="pt-3 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
-                             <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                         <div className="pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
+                             <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
                                  {item.price}
                              </div>
                              <a 
                                 href={item.url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs text-indigo-500 font-bold hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                                className="flex items-center gap-1.5 text-sm px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded-xl font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
                              >
-                                 {t('price.buyNow')} <ArrowRight size={12} />
+                                 {t('price.buyNow')} <ArrowRight size={14} />
                              </a>
                          </div>
                       </div>
@@ -233,7 +216,7 @@ export const PriceCheck: React.FC = () => {
           ) : (
              // Fallback to text if structured parsing failed
              <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-lg border border-slate-100 dark:border-slate-800">
-                <div className="prose prose-slate dark:prose-invert max-w-none whitespace-pre-wrap">
+                <div className="prose prose-slate dark:prose-invert max-w-none whitespace-pre-wrap leading-relaxed">
                     {result.text}
                 </div>
              </div>
@@ -242,7 +225,7 @@ export const PriceCheck: React.FC = () => {
           {/* Secondary Sources (Grounding) */}
           {result.sources.length > 0 && (
             <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800/50">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">
                 {t('price.sources')}
               </h4>
               <div className="flex flex-wrap gap-2">
@@ -252,7 +235,7 @@ export const PriceCheck: React.FC = () => {
                     href={source.uri}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate max-w-[200px]"
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-indigo-500 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-md transition-all truncate max-w-[240px]"
                   >
                     <Globe size={12} />
                     <span className="truncate">{source.title}</span>

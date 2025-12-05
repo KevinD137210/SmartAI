@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction, Invoice, Project, Client, TransactionType, DocumentType, InvoiceStatus } from '../types';
-import { FileSpreadsheet, Download, Filter, Calendar as CalendarIcon, PieChart, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { FileSpreadsheet, Download, Filter, Calendar as CalendarIcon, PieChart, TrendingUp, TrendingDown, DollarSign, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import * as XLSX from 'xlsx';
 
@@ -150,7 +150,7 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
     <div className="space-y-6 animate-fadeIn pb-10">
       
       {/* Controls */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
               <h2 className="text-2xl font-bold text-slate-800 dark:text-white font-orbitron flex items-center gap-2">
                   <FileSpreadsheet className="text-emerald-500" />
@@ -160,33 +160,37 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
           </div>
 
           <div className="flex flex-wrap gap-3 items-center">
-              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-1 flex items-center">
-                  <div className="px-3 flex items-center gap-2 text-slate-500 text-sm font-bold border-r border-slate-200 dark:border-slate-700 mr-1">
+              <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                       <CalendarIcon size={16} />
-                      {t('rep.year')}
                   </div>
                   <select 
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(Number(e.target.value))}
-                    className="bg-transparent text-slate-800 dark:text-slate-200 font-bold px-2 py-1 outline-none cursor-pointer"
+                    className="appearance-none bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold pl-10 pr-8 py-3 rounded-xl outline-none cursor-pointer border border-transparent focus:border-indigo-500 transition-all"
                   >
-                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                      {years.map(y => <option key={y} value={y} className="bg-white dark:bg-slate-900">{y}</option>)}
                   </select>
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                      <ChevronDown size={14} />
+                  </div>
               </div>
 
-              <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-1 flex items-center">
-                  <div className="px-3 flex items-center gap-2 text-slate-500 text-sm font-bold border-r border-slate-200 dark:border-slate-700 mr-1">
+              <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                       <Filter size={16} />
-                      {t('rep.month')}
                   </div>
                   <select 
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                    className="bg-transparent text-slate-800 dark:text-slate-200 font-bold px-2 py-1 outline-none cursor-pointer"
+                    className="appearance-none bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold pl-10 pr-8 py-3 rounded-xl outline-none cursor-pointer border border-transparent focus:border-indigo-500 transition-all"
                   >
-                      <option value="all">{t('rep.allMonths')}</option>
-                      {months.map(m => <option key={m} value={m}>{m}</option>)}
+                      <option value="all" className="bg-white dark:bg-slate-900">{t('rep.allMonths')}</option>
+                      {months.map(m => <option key={m} value={m} className="bg-white dark:bg-slate-900">{m}</option>)}
                   </select>
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                      <ChevronDown size={14} />
+                  </div>
               </div>
 
               <button 
@@ -202,7 +206,7 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
               <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-bl-[4rem] group-hover:bg-emerald-500/10 transition-colors"></div>
               <div className="flex items-center gap-3 mb-2 text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider text-xs">
                   <TrendingUp size={16} />
@@ -213,7 +217,7 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
               </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
               <div className="absolute right-0 top-0 w-24 h-24 bg-rose-500/5 rounded-bl-[4rem] group-hover:bg-rose-500/10 transition-colors"></div>
               <div className="flex items-center gap-3 mb-2 text-rose-600 dark:text-rose-400 font-bold uppercase tracking-wider text-xs">
                   <TrendingDown size={16} />
@@ -224,7 +228,7 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
               </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
               <div className="absolute right-0 top-0 w-24 h-24 bg-indigo-500/5 rounded-bl-[4rem] group-hover:bg-indigo-500/10 transition-colors"></div>
               <div className="flex items-center gap-3 mb-2 text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider text-xs">
                   <DollarSign size={16} />
@@ -237,7 +241,7 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
       </div>
 
       {/* Preview Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
               <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
                   <PieChart size={20} className="text-indigo-500"/>
@@ -249,11 +253,11 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
               <table className="w-full text-left">
                   <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
                       <tr>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('rep.project')}</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('rep.client')}</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">{t('rep.revenue')}</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">{t('rep.expenses')}</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">{t('rep.net')}</th>
+                          <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('rep.project')}</th>
+                          <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('rep.client')}</th>
+                          <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">{t('rep.revenue')}</th>
+                          <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">{t('rep.expenses')}</th>
+                          <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">{t('rep.net')}</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

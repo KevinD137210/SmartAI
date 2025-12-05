@@ -50,7 +50,7 @@ export const Settings: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-8">
         
         {/* Language Section */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800">
             <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
                 <Globe className="text-blue-500" size={24} />
                 {t('set.language')}
@@ -74,7 +74,7 @@ export const Settings: React.FC = () => {
         </div>
 
         {/* Branding & Signature Section */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800">
              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
                 <ImageIcon className="text-purple-500" size={24} />
                 {t('set.branding')}
@@ -84,21 +84,21 @@ export const Settings: React.FC = () => {
                  {/* Logo Upload */}
                  <div className="space-y-3">
                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.companyLogo')}</label>
-                     <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50 min-h-[160px] relative">
+                     <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50 min-h-[160px] relative group">
                          {formData.logo ? (
                              <>
                                 <img src={formData.logo} alt="Logo Preview" className="max-h-24 object-contain mb-2" />
                                 <button 
                                     type="button"
                                     onClick={() => removeImage('logo')}
-                                    className="absolute top-2 right-2 p-1 bg-white dark:bg-slate-700 rounded-full shadow-sm text-rose-500 hover:text-rose-600"
+                                    className="absolute top-2 right-2 p-1.5 bg-white dark:bg-slate-700 rounded-full shadow-sm text-rose-500 hover:text-rose-600 transition-colors"
                                 >
                                     <X size={16} />
                                 </button>
                              </>
                          ) : (
                              <>
-                                <Upload className="text-slate-300 dark:text-slate-500 mb-2" size={32} />
+                                <Upload className="text-slate-300 dark:text-slate-500 mb-2 group-hover:text-indigo-500 transition-colors" size={32} />
                                 <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t('set.uploadLogo')}</span>
                                 <span className="text-xs text-slate-400 mt-1">{t('set.logoFormat')}</span>
                              </>
@@ -115,21 +115,21 @@ export const Settings: React.FC = () => {
                  {/* Signature Upload */}
                  <div className="space-y-3">
                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.signature')}</label>
-                     <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50 min-h-[160px] relative">
+                     <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors bg-slate-50 dark:bg-slate-800/50 min-h-[160px] relative group">
                          {formData.signature ? (
                              <>
                                 <img src={formData.signature} alt="Signature Preview" className="max-h-20 object-contain mb-2" />
                                 <button 
                                     type="button"
                                     onClick={() => removeImage('signature')}
-                                    className="absolute top-2 right-2 p-1 bg-white dark:bg-slate-700 rounded-full shadow-sm text-rose-500 hover:text-rose-600"
+                                    className="absolute top-2 right-2 p-1.5 bg-white dark:bg-slate-700 rounded-full shadow-sm text-rose-500 hover:text-rose-600 transition-colors"
                                 >
                                     <X size={16} />
                                 </button>
                              </>
                          ) : (
                              <>
-                                <PenTool className="text-slate-300 dark:text-slate-500 mb-2" size={32} />
+                                <PenTool className="text-slate-300 dark:text-slate-500 mb-2 group-hover:text-indigo-500 transition-colors" size={32} />
                                 <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{t('set.uploadSignature')}</span>
                                 <span className="text-xs text-slate-400 mt-1">{t('set.sigFormat')}</span>
                              </>
@@ -146,7 +146,7 @@ export const Settings: React.FC = () => {
         </div>
 
         {/* Basic Information Section */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800">
           <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
             <User className="text-indigo-500" size={24} />
             {t('set.basicInfo')}
@@ -156,13 +156,13 @@ export const Settings: React.FC = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.companyName')}</label>
               <div className="relative">
-                <Building className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                <Building className="absolute left-4 top-3.5 text-slate-400 pointer-events-none" size={18} />
                 <input
                   type="text"
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                 />
               </div>
             </div>
@@ -170,13 +170,13 @@ export const Settings: React.FC = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.contactName')}</label>
               <div className="relative">
-                <User className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                <User className="absolute left-4 top-3.5 text-slate-400 pointer-events-none" size={18} />
                 <input
                   type="text"
                   name="contactName"
                   value={formData.contactName}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                 />
               </div>
             </div>
@@ -184,13 +184,13 @@ export const Settings: React.FC = () => {
             <div className="space-y-2 md:col-span-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.address')}</label>
               <div className="relative">
-                <MapPin className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                <MapPin className="absolute left-4 top-3.5 text-slate-400 pointer-events-none" size={18} />
                 <input
                   type="text"
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                 />
               </div>
             </div>
@@ -198,13 +198,13 @@ export const Settings: React.FC = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.email')}</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                <Mail className="absolute left-4 top-3.5 text-slate-400 pointer-events-none" size={18} />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                 />
               </div>
             </div>
@@ -212,26 +212,26 @@ export const Settings: React.FC = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.phone')}</label>
               <div className="relative">
-                <Phone className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                <Phone className="absolute left-4 top-3.5 text-slate-400 pointer-events-none" size={18} />
                 <input
                   type="text"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                 />
               </div>
             </div>
              <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('set.taxId')}</label>
               <div className="relative">
-                <Building className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                <Building className="absolute left-4 top-3.5 text-slate-400 pointer-events-none" size={18} />
                 <input
                   type="text"
                   name="taxId"
                   value={formData.taxId}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                 />
               </div>
             </div>
@@ -239,7 +239,7 @@ export const Settings: React.FC = () => {
         </div>
 
         {/* Financial Settings Section */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800">
           <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
             <CreditCard className="text-emerald-500" size={24} />
             {t('set.financial')}
@@ -256,7 +256,7 @@ export const Settings: React.FC = () => {
                   name="depositPercentage"
                   value={formData.depositPercentage}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-mono"
+                  className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white font-mono transition-all"
                 />
                 <span className="absolute right-4 top-3.5 text-slate-400 font-bold">%</span>
               </div>
@@ -272,7 +272,7 @@ export const Settings: React.FC = () => {
                   name="secondPaymentPercentage"
                   value={formData.secondPaymentPercentage}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-mono"
+                  className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white font-mono transition-all"
                 />
                 <span className="absolute right-4 top-3.5 text-slate-400 font-bold">%</span>
               </div>
@@ -288,7 +288,7 @@ export const Settings: React.FC = () => {
                   name="acceptancePaymentPercentage"
                   value={formData.acceptancePaymentPercentage || 0}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-mono"
+                  className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white font-mono transition-all"
                 />
                 <span className="absolute right-4 top-3.5 text-slate-400 font-bold">%</span>
               </div>

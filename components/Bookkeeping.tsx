@@ -116,33 +116,33 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
   const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn pb-10">
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4">
         <div className="flex flex-wrap gap-3">
             <div className="flex bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-1.5 shadow-sm">
                 <button 
                     onClick={() => setFilterType('ALL')}
-                    className={`px-4 py-2 text-sm rounded-xl transition-all ${filterType === 'ALL' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                    className={`px-4 py-2 text-sm rounded-xl transition-all ${filterType === 'ALL' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-bold shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                 >
                     {t('book.all')}
                 </button>
                 <button 
                     onClick={() => setFilterType(TransactionType.INCOME)}
-                    className={`px-4 py-2 text-sm rounded-xl transition-all ${filterType === TransactionType.INCOME ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                    className={`px-4 py-2 text-sm rounded-xl transition-all ${filterType === TransactionType.INCOME ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                 >
                     {t('book.income')}
                 </button>
                 <button 
                     onClick={() => setFilterType(TransactionType.EXPENSE)}
-                    className={`px-4 py-2 text-sm rounded-xl transition-all ${filterType === TransactionType.EXPENSE ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-bold shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                    className={`px-4 py-2 text-sm rounded-xl transition-all ${filterType === TransactionType.EXPENSE ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-bold shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                 >
                     {t('book.expense')}
                 </button>
             </div>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 font-medium"
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 font-medium hover:scale-105 active:scale-95"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">{t('book.addNew')}</span>
@@ -150,20 +150,20 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 backdrop-blur-sm sticky top-0">
               <tr>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('book.date')}</th>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('book.type')}</th>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('book.desc')}</th>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('book.category')}</th>
-                <th className="px-8 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">{t('book.amount')}</th>
-                <th className="px-8 py-5 w-16"></th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('book.date')}</th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('book.type')}</th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('book.desc')}</th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('book.category')}</th>
+                <th className="px-6 py-5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">{t('book.amount')}</th>
+                <th className="px-6 py-5 w-16"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
               {filteredTransactions.length === 0 ? (
                 <tr>
                     <td colSpan={6} className="px-6 py-24 text-center">
@@ -182,20 +182,20 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                         onClick={() => setViewTx(tx)}
                         className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
                     >
-                    <td className="px-8 py-5 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{tx.date}</td>
-                    <td className="px-8 py-5">
+                    <td className="px-6 py-5 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap font-medium">{tx.date}</td>
+                    <td className="px-6 py-5">
                         {tx.type === TransactionType.INCOME ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
                             <ArrowUpCircle size={14} /> {t('book.income')}
                         </span>
                         ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30">
                             <ArrowDownCircle size={14} /> {t('book.expense')}
                         </span>
                         )}
                     </td>
-                    <td className="px-8 py-5">
-                        <div className="text-sm text-slate-900 dark:text-white font-semibold">{tx.description}</div>
+                    <td className="px-6 py-5 max-w-[300px]">
+                        <div className="text-sm text-slate-900 dark:text-white font-semibold truncate">{tx.description}</div>
                         <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 space-y-1">
                             {(tx.merchant || tx.location) && (
                                 <div className="flex items-center gap-3">
@@ -217,14 +217,16 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                             )}
                         </div>
                     </td>
-                    <td className="px-8 py-5 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                        <Tag size={14} className="opacity-50"/>
-                        {t(`cat.${tx.category}`)}
+                    <td className="px-6 py-5 text-sm text-slate-500 dark:text-slate-400">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium">
+                            <Tag size={12} className="opacity-70"/>
+                            {t(`cat.${tx.category}`)}
+                        </span>
                     </td>
-                    <td className={`px-8 py-5 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    <td className={`px-6 py-5 text-sm font-bold text-right ${tx.type === TransactionType.INCOME ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>
                         {tx.type === TransactionType.INCOME ? '+' : '-'}${tx.amount.toLocaleString()}
                     </td>
-                    <td className="px-8 py-5 text-right">
+                    <td className="px-6 py-5 text-right">
                         <button
                         onClick={(e) => {
                             e.stopPropagation();
@@ -245,7 +247,7 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
 
       {/* View Transaction Details Modal */}
       {viewTx && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[90vh]">
                 <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('book.details')}</h3>
@@ -267,14 +269,14 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                     </div>
 
                     {/* Details Grid */}
-                    <div className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="space-y-4 bg-slate-50 dark:bg-slate-950/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
                         <div>
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">{t('book.desc')}</label>
                             <p className="text-slate-800 dark:text-slate-200 font-medium">{viewTx.description}</p>
                         </div>
                         
                         {(viewTx.merchant || viewTx.location || viewTx.projectId) && (
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-6">
                                 {viewTx.merchant && (
                                     <div>
                                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">{t('book.merchant')}</label>
@@ -318,7 +320,7 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
 
       {/* Modern Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-8 flex flex-col max-h-[90vh] animate-scaleIn">
             
             {/* Header */}
@@ -407,7 +409,7 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                         <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
                             <Briefcase size={20} />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 relative">
                             <label className="text-[10px] font-bold text-amber-800 dark:text-amber-200 uppercase tracking-wider block mb-1">
                                 {t('book.projectExpense')}
                             </label>
@@ -415,11 +417,11 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                                 <select
                                     value={newTx.projectId || ''}
                                     onChange={e => setNewTx({...newTx, projectId: e.target.value})}
-                                    className="w-full bg-transparent font-bold text-slate-700 dark:text-slate-200 focus:outline-none appearance-none cursor-pointer truncate pr-6"
+                                    className="appearance-none w-full bg-transparent font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer truncate pr-6"
                                 >
-                                    <option value="">{t('book.selectProjectPlaceholder')}</option>
+                                    <option value="" className="bg-white dark:bg-slate-900">{t('book.selectProjectPlaceholder')}</option>
                                     {activeProjects.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                        <option key={p.id} value={p.id} className="bg-white dark:bg-slate-900">{p.name}</option>
                                     ))}
                                 </select>
                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-amber-600 dark:text-amber-400">
@@ -442,11 +444,11 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                     
                     {/* Row 1: Type & Date */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex">
+                        <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl flex">
                             <button
                                 type="button"
                                 onClick={() => setNewTx(p => ({...p, type: TransactionType.EXPENSE, category: CATEGORIES[TransactionType.EXPENSE][0]}))}
-                                className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${newTx.type === TransactionType.EXPENSE ? 'bg-white dark:bg-slate-700 text-rose-500 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                className={`flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${newTx.type === TransactionType.EXPENSE ? 'bg-white dark:bg-slate-700 text-rose-500 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                             >
                                 <ArrowDownCircle size={16} />
                                 {t('book.personalExpense')}
@@ -454,7 +456,7 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                             <button
                                 type="button"
                                 onClick={() => setNewTx(p => ({...p, type: TransactionType.INCOME, category: CATEGORIES[TransactionType.INCOME][0]}))}
-                                className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${newTx.type === TransactionType.INCOME ? 'bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                className={`flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${newTx.type === TransactionType.INCOME ? 'bg-white dark:bg-slate-700 text-emerald-500 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                             >
                                 <ArrowUpCircle size={16} />
                                 {t('book.income')}
@@ -467,7 +469,7 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                                 required
                                 value={newTx.date}
                                 onChange={e => setNewTx({...newTx, date: e.target.value})}
-                                className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-bold dark:scheme-dark"
+                                className="w-full pl-4 pr-10 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white font-bold dark:scheme-dark transition-all"
                             />
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                                 <Calendar size={18} />
@@ -488,7 +490,7 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                                     step="0.01"
                                     value={newTx.amount || ''}
                                     onChange={e => setNewTx({...newTx, amount: parseFloat(e.target.value)})}
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-xl font-bold font-mono"
+                                    className="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white text-xl font-bold font-mono transition-all"
                                     placeholder="0.00"
                                 />
                             </div>
@@ -500,13 +502,14 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                                 <select
                                     value={newTx.category}
                                     onChange={e => setNewTx({...newTx, category: e.target.value})}
-                                    className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-bold appearance-none h-[54px]"
+                                    className="appearance-none w-full pl-10 pr-10 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white font-bold h-[54px] cursor-pointer transition-all"
                                 >
                                     {CATEGORIES[newTx.type as TransactionType].map(c => (
-                                        <option key={c} value={c}>{t(`cat.${c}`)}</option>
+                                        <option key={c} value={c} className="bg-white dark:bg-slate-900">{t(`cat.${c}`)}</option>
                                     ))}
                                 </select>
-                                <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                             </div>
                         </div>
                     </div>
@@ -516,12 +519,12 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                         <div>
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('book.merchant')}</label>
                             <div className="relative">
-                                <Store className="absolute left-3.5 top-3.5 text-slate-400" size={18} />
+                                <Store className="absolute left-3.5 top-4 text-slate-400 pointer-events-none" size={18} />
                                 <input
                                     type="text"
                                     value={newTx.merchant}
                                     onChange={e => setNewTx({...newTx, merchant: e.target.value})}
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-sm font-medium"
+                                    className="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white text-sm font-medium transition-all"
                                     placeholder={t('book.placeholder.merchant')}
                                 />
                             </div>
@@ -529,12 +532,12 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                         <div>
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('book.location')}</label>
                             <div className="relative">
-                                <MapPin className="absolute left-3.5 top-3.5 text-slate-400" size={18} />
+                                <MapPin className="absolute left-3.5 top-4 text-slate-400 pointer-events-none" size={18} />
                                 <input
                                     type="text"
                                     value={newTx.location}
                                     onChange={e => setNewTx({...newTx, location: e.target.value})}
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-sm font-medium"
+                                    className="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white text-sm font-medium transition-all"
                                     placeholder={t('book.placeholder.location')}
                                 />
                             </div>
@@ -545,11 +548,11 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                     <div>
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('book.item')}</label>
                         <div className="relative">
-                            <ShoppingBag className="absolute left-3.5 top-3.5 text-slate-400" size={18} />
+                            <ShoppingBag className="absolute left-3.5 top-4 text-slate-400 pointer-events-none" size={18} />
                             <textarea
                                 value={newTx.items}
                                 onChange={e => setNewTx({...newTx, items: e.target.value})}
-                                className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-sm font-medium resize-none min-h-[80px]"
+                                className="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white text-sm font-medium resize-none min-h-[80px] transition-all"
                                 placeholder={t('book.placeholder.item')}
                                 rows={3}
                             />
@@ -564,7 +567,7 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                             required
                             value={newTx.description}
                             onChange={e => setNewTx({...newTx, description: e.target.value})}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-medium"
+                            className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white font-medium transition-all"
                             placeholder={t('book.placeholder.desc')}
                         />
                     </div>
@@ -580,13 +583,13 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
                         setIsModalOpen(false);
                         resetForm();
                     }}
-                    className="flex-1 py-3.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                    className="flex-1 py-3.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-bold hover:bg-white dark:hover:bg-slate-700 transition-colors"
                 >
                     {t('book.cancel')}
                 </button>
                 <button
                     onClick={() => handleSubmit()}
-                    className="flex-1 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/25 transition-transform active:scale-95"
+                    className="flex-1 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/25 transition-transform active:scale-95"
                 >
                     {t('book.save')}
                 </button>

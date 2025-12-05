@@ -140,7 +140,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
       {/* Action Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
          <div className="relative flex-1 w-full md:w-auto md:max-w-md">
-             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                  <Search size={20} />
              </div>
              <input 
@@ -148,7 +148,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                 placeholder={t('proj.search')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white shadow-sm"
+                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white shadow-sm transition-all"
              />
          </div>
          <button
@@ -179,7 +179,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                   };
 
                   return (
-                  <div key={project.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg dark:hover:shadow-indigo-900/10 transition-all group flex flex-col relative overflow-hidden">
+                  <div key={project.id} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-xl dark:hover:shadow-indigo-900/10 transition-all group flex flex-col relative overflow-hidden">
                       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${project.status === 'COMPLETED' ? 'from-slate-500/10' : 'from-indigo-500/5'} to-transparent rounded-bl-[4rem] -mr-8 -mt-8 pointer-events-none`}></div>
                       
                       <div className="flex justify-between items-start mb-4">
@@ -215,7 +215,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                                <select 
                                    value={project.status || 'NOT_SET'}
                                    onChange={(e) => handleStatusChange(project, e.target.value as ProjectStatus)}
-                                   className={`w-full appearance-none px-3 py-2 rounded-xl text-xs font-bold border-none outline-none cursor-pointer ${getStatusColor(project.status || 'NOT_SET')}`}
+                                   className={`w-full appearance-none px-3 py-2 pr-8 rounded-xl text-xs font-bold border-none outline-none cursor-pointer transition-colors ${getStatusColor(project.status || 'NOT_SET')}`}
                                >
                                    {PROJECT_STATUSES.map(status => (
                                        <option 
@@ -245,8 +245,8 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
 
       {/* Modal */}
       {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg p-8 animate-scaleIn border border-slate-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-lg p-8 animate-scaleIn border border-slate-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
                   <div className="flex justify-between items-center mb-6">
                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
                           {editingProject.id && projects.find(p => p.id === editingProject.id) ? t('proj.edit') : t('proj.addNew')}
@@ -264,42 +264,48 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                             required 
                             value={editingProject.name}
                             onChange={e => setEditingProject({...editingProject, name: e.target.value})}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                            className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                           />
                       </div>
                       
                       <div className="space-y-2">
                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('proj.selectClient')}</label>
-                          <select
-                            required
-                            value={editingProject.clientId}
-                            onChange={e => setEditingProject({...editingProject, clientId: e.target.value})}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
-                          >
-                             <option value="">{t('proj.selectClientPlaceholder')}</option>
-                             {activeClients.map(client => (
-                                 <option key={client.id} value={client.id}>{client.name}</option>
-                             ))}
-                          </select>
+                          <div className="relative">
+                            <select
+                                required
+                                value={editingProject.clientId}
+                                onChange={e => setEditingProject({...editingProject, clientId: e.target.value})}
+                                className="w-full appearance-none px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white cursor-pointer transition-all"
+                            >
+                                <option value="" className="bg-white dark:bg-slate-900">{t('proj.selectClientPlaceholder')}</option>
+                                {activeClients.map(client => (
+                                    <option key={client.id} value={client.id} className="bg-white dark:bg-slate-900">{client.name}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                          </div>
                       </div>
 
                       <div className="space-y-2">
                           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('proj.status')}</label>
-                          <select
-                              value={editingProject.status || 'NOT_SET'}
-                              onChange={(e) => setEditingProject({...editingProject, status: e.target.value as ProjectStatus})}
-                              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
-                          >
-                              {PROJECT_STATUSES.map(status => (
-                                  <option 
-                                    key={status} 
-                                    value={status}
-                                    className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
-                                  >
-                                    {t(`proj.st.${status}`)}
-                                  </option>
-                              ))}
-                          </select>
+                          <div className="relative">
+                            <select
+                                value={editingProject.status || 'NOT_SET'}
+                                onChange={(e) => setEditingProject({...editingProject, status: e.target.value as ProjectStatus})}
+                                className="w-full appearance-none px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white cursor-pointer transition-all"
+                            >
+                                {PROJECT_STATUSES.map(status => (
+                                    <option 
+                                        key={status} 
+                                        value={status}
+                                        className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
+                                    >
+                                        {t(`proj.st.${status}`)}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                          </div>
                       </div>
 
                       <div className="space-y-2">
@@ -308,7 +314,7 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                             rows={3}
                             value={editingProject.description}
                             onChange={e => setEditingProject({...editingProject, description: e.target.value})}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
+                            className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white resize-none transition-all"
                           />
                       </div>
                       
@@ -316,13 +322,13 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
                         <button
                           type="button"
                           onClick={() => setIsModalOpen(false)}
-                          className="flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold transition-colors"
+                          className="flex-1 px-4 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold transition-colors"
                         >
                           {t('book.cancel')}
                         </button>
                         <button
                           type="submit"
-                          className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all transform active:scale-95"
+                          className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/25 transition-all transform active:scale-95"
                         >
                           {t('book.save')}
                         </button>

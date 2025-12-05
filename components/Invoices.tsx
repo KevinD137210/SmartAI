@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, InvoiceItem, DocumentType, InvoiceStatus, Client, Project } from '../types';
-import { Plus, Printer, Eye, Trash2, Edit2, ArrowLeft, Download, FileText, Users, Mail, Sparkles, Loader2, ExternalLink, Paperclip, X, Search, AlertCircle, ArrowRightCircle, Briefcase, Archive, Filter, CheckCircle, Globe, CreditCard, Building, User } from 'lucide-react';
+import { Plus, Printer, Eye, Trash2, Edit2, ArrowLeft, Download, FileText, Users, Mail, Sparkles, Loader2, ExternalLink, Paperclip, X, Search, AlertCircle, ArrowRightCircle, Briefcase, Archive, Filter, CheckCircle, Globe, CreditCard, Building, User, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { generateInvoiceEmail, translateText, generateTermsAndConditions } from '../services/geminiService';
@@ -395,11 +395,11 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             <div className="lg:col-span-2 space-y-6">
                 
                 {/* Header Card */}
-                <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6">
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                          <div>
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.type')}</label>
-                            <div className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300 font-bold flex items-center gap-2">
+                            <div className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-700 dark:text-slate-300 font-bold flex items-center gap-2">
                                 {currentInvoice.type === DocumentType.INVOICE ? (
                                     <span className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
                                         <FileText size={18} />
@@ -415,16 +415,19 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.project')}</label>
-                            <select 
-                                value={currentInvoice.projectId || ''} 
-                                onChange={(e) => handleProjectSelect(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white appearance-none"
-                            >
-                                <option value="">{t('inv.selectProject')}</option>
-                                {activeProjects.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                            <div className="relative">
+                                <select 
+                                    value={currentInvoice.projectId || ''} 
+                                    onChange={(e) => handleProjectSelect(e.target.value)}
+                                    className="appearance-none w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white cursor-pointer transition-all"
+                                >
+                                    <option value="" className="bg-white dark:bg-slate-900">{t('inv.selectProject')}</option>
+                                    {activeProjects.map(p => (
+                                        <option key={p.id} value={p.id} className="bg-white dark:bg-slate-900">{p.name}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                            </div>
                         </div>
                      </div>
                      
@@ -439,7 +442,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                         type="text"
                                         value={currentInvoice.clientName}
                                         onChange={(e) => setCurrentInvoice({...currentInvoice, clientName: e.target.value})}
-                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                                         placeholder={t('inv.clientPlace')}
                                     />
                                     <button 
@@ -452,7 +455,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                                 setIsClientSelectorOpen(true);
                                             }
                                         }}
-                                        className="px-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                                        className="px-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                                     >
                                         <Users size={20} />
                                     </button>
@@ -464,7 +467,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                     type="text"
                                     value={currentInvoice.number}
                                     onChange={(e) => setCurrentInvoice({...currentInvoice, number: e.target.value})}
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-mono"
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white font-mono transition-all"
                                 />
                             </div>
                          </div>
@@ -476,7 +479,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                     type="date"
                                     value={currentInvoice.date}
                                     onChange={(e) => setCurrentInvoice({...currentInvoice, date: e.target.value})}
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white dark:scheme-dark"
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white dark:scheme-dark transition-all"
                                 />
                             </div>
                          </div>
@@ -484,7 +487,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                 </div>
 
                 {/* Items Card */}
-                <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-4">
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-4">
                     <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
                         <h3 className="font-bold text-slate-800 dark:text-white">{t('inv.items')}</h3>
                         <button onClick={addItem} className="text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center gap-1 transition-colors">
@@ -502,7 +505,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                             placeholder={t('inv.desc')}
                                             value={item.description}
                                             onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                            className="w-full pl-4 pr-32 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                                            className="w-full pl-4 pr-32 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                                         />
                                         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
                                             <select 
@@ -532,7 +535,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                             placeholder={t('inv.itemNote')}
                                             value={item.notes || ''}
                                             onChange={(e) => updateItem(item.id, 'notes', e.target.value)}
-                                            className="w-full pl-4 pr-32 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-y min-h-[80px] text-sm"
+                                            className="w-full pl-4 pr-32 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white resize-y min-h-[80px] text-sm transition-all"
                                         />
                                         <div className="absolute right-1 top-2 flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
                                             <select 
@@ -565,7 +568,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                             min="1"
                                             value={item.quantity}
                                             onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
-                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-right"
+                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white text-right transition-all"
                                         />
                                     </div>
                                     <div className="w-32">
@@ -575,7 +578,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                             min="0"
                                             value={item.unitPrice}
                                             onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))}
-                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-right"
+                                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white text-right transition-all"
                                         />
                                     </div>
                                     <div className="pt-2">
@@ -614,7 +617,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                 rows={3}
                                 value={currentInvoice.notes || ''}
                                 onChange={(e) => setCurrentInvoice({...currentInvoice, notes: e.target.value})}
-                                className="w-full pl-4 pr-32 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
+                                className="w-full pl-4 pr-32 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white resize-none transition-all"
                                 placeholder={t('inv.notesPlaceholder')}
                             />
                             <div className="absolute right-1 top-2 flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
@@ -646,7 +649,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             {/* Right Column: Financials Panel (Sticky) */}
             <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24">
                 {/* ... existing code ... */}
-                <div className="bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-800 text-white overflow-hidden relative">
+                <div className="bg-slate-900 rounded-[2rem] p-6 shadow-xl shadow-slate-900/10 border border-slate-800 text-white overflow-hidden relative">
                      <div className="flex items-center gap-2 mb-6">
                          <CreditCard className="text-emerald-400" size={20} />
                          <h3 className="font-bold text-lg tracking-wide">{t('set.financial')}</h3>
@@ -678,19 +681,22 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                  {t('inv.docLanguage')}
                              </label>
                              <div className="flex gap-2">
-                                 <select
-                                     value={currentInvoice.docLanguage}
-                                     onChange={(e) => setCurrentInvoice({...currentInvoice, docLanguage: e.target.value})}
-                                     className="w-full bg-slate-800 text-white text-sm font-bold rounded-xl px-3 py-2.5 border border-slate-700 outline-none appearance-none"
-                                 >
-                                     {TRANSLATION_OPTIONS.map(opt => (
-                                         <option key={opt.code} value={opt.code} className="bg-slate-800">{opt.label} {opt.flag}</option>
-                                     ))}
-                                 </select>
+                                 <div className="relative w-full">
+                                    <select
+                                        value={currentInvoice.docLanguage}
+                                        onChange={(e) => setCurrentInvoice({...currentInvoice, docLanguage: e.target.value})}
+                                        className="appearance-none w-full bg-slate-800 text-white text-sm font-bold rounded-xl pl-3 pr-8 py-2.5 border border-slate-700 outline-none cursor-pointer focus:border-indigo-500 transition-colors"
+                                    >
+                                        {TRANSLATION_OPTIONS.map(opt => (
+                                            <option key={opt.code} value={opt.code} className="bg-slate-800">{opt.label} {opt.flag}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={14} />
+                                 </div>
                                  <button 
                                     onClick={handleTranslateDocument}
                                     disabled={isTranslatingDoc}
-                                    className="px-3 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/40 rounded-xl transition-colors border border-indigo-500/30"
+                                    className="px-3 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/40 rounded-xl transition-colors border border-indigo-500/30 shrink-0"
                                     title="Translate all items to selected language"
                                  >
                                      {isTranslatingDoc ? <Loader2 size={16} className="animate-spin"/> : <Sparkles size={16} />}
@@ -699,15 +705,18 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                         </div>
                         <div>
                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">{t('inv.currency')}</label>
-                             <select
-                                 value={currentInvoice.currency}
-                                 onChange={(e) => setCurrentInvoice({...currentInvoice, currency: e.target.value})}
-                                 className="w-full bg-slate-800 text-white text-sm font-bold rounded-xl px-3 py-2.5 border border-slate-700 outline-none appearance-none"
-                             >
-                                 {CURRENCY_OPTIONS.map(c => (
-                                     <option key={c} value={c} className="bg-slate-800">{c}</option>
-                                 ))}
-                             </select>
+                             <div className="relative">
+                                <select
+                                    value={currentInvoice.currency}
+                                    onChange={(e) => setCurrentInvoice({...currentInvoice, currency: e.target.value})}
+                                    className="appearance-none w-full bg-slate-800 text-white text-sm font-bold rounded-xl pl-3 pr-8 py-2.5 border border-slate-700 outline-none cursor-pointer focus:border-indigo-500 transition-colors"
+                                >
+                                    {CURRENCY_OPTIONS.map(c => (
+                                        <option key={c} value={c} className="bg-slate-800">{c}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={14} />
+                             </div>
                         </div>
                      </div>
 
@@ -720,7 +729,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                 min="0" 
                                 value={currentInvoice.taxRate}
                                 onChange={(e) => setCurrentInvoice({...currentInvoice, taxRate: Number(e.target.value)})}
-                                className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500"
+                                className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500 transition-colors"
                              />
                          </div>
                          <div className="flex justify-between items-center">
@@ -730,7 +739,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                 min="0" 
                                 value={currentInvoice.discount}
                                 onChange={(e) => setCurrentInvoice({...currentInvoice, discount: Number(e.target.value)})}
-                                className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500"
+                                className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500 transition-colors"
                              />
                          </div>
                          <div className="flex justify-between items-center">
@@ -743,7 +752,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                     max="100"
                                     value={currentInvoice.depositPercentage}
                                     onChange={(e) => setCurrentInvoice({...currentInvoice, depositPercentage: Number(e.target.value)})}
-                                    className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500"
+                                    className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500 transition-colors"
                                  />
                              </div>
                          </div>
@@ -757,7 +766,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                                     max="100"
                                     value={currentInvoice.progressPaymentPercentage}
                                     onChange={(e) => setCurrentInvoice({...currentInvoice, progressPaymentPercentage: Number(e.target.value)})}
-                                    className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500"
+                                    className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-right text-white focus:outline-none focus:border-indigo-500 transition-colors"
                                  />
                              </div>
                          </div>
@@ -810,7 +819,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
 
         {/* Client Selector Modal */}
         {isClientSelectorOpen && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
                 <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[80vh]">
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                         <h3 className="font-bold text-lg text-slate-800 dark:text-white">{t('inv.selectClientTitle')}</h3>
@@ -834,7 +843,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                         {filteredClients.length > 0 ? (
                             filteredClients.map(client => (
                                 <button
@@ -861,7 +870,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
         )}
 
         {showNoClientAlert && (
-             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-scaleIn">
+             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-scaleIn">
                  <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm p-6 border border-slate-100 dark:border-slate-800 text-center">
                     <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-amber-500 mx-auto mb-4">
                         <AlertCircle size={28} />
@@ -906,7 +915,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
       return (
           <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn pb-20">
               <div className="flex items-center justify-between no-print">
-                <button onClick={() => setView('LIST')} className="flex items-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">
+                <button onClick={() => setView('LIST')} className="flex items-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
                     <ArrowLeft size={20} className="mr-2"/> {t('inv.back')}
                 </button>
                 <div className="flex gap-2">
@@ -1082,7 +1091,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
         )}
         <button
           onClick={handleCreateNew}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 font-medium"
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 font-medium whitespace-nowrap"
         >
           <Plus size={20} />
           <span>{t('inv.createNew')}</span>
@@ -1091,7 +1100,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
 
       <div className="grid grid-cols-1 gap-4">
         {filteredInvoices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800">
                 <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-full mb-4">
                     <FileText className="text-indigo-300 dark:text-indigo-600" size={48}/>
                 </div>
@@ -1106,7 +1115,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
             </div>
         ) : (
             filteredInvoices.map(inv => (
-            <div key={inv.id} className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:shadow-lg dark:hover:shadow-indigo-900/10 transition-all group">
+            <div key={inv.id} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:shadow-xl dark:hover:shadow-indigo-900/10 transition-all group">
                 <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                         <span className={`px-2.5 py-1 text-[10px] font-bold rounded-lg uppercase tracking-widest ${inv.type === DocumentType.INVOICE ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>
@@ -1127,19 +1136,22 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                     {/* Status Actions */}
                     <div className="flex items-center gap-3 self-end md:self-auto w-full md:w-auto justify-end">
                         {inv.type === DocumentType.INVOICE && (
-                            <select 
-                                value={inv.status}
-                                onChange={(e) => onUpdateStatus(inv.id, e.target.value as InvoiceStatus)}
-                                className={`text-xs font-bold px-3 py-1.5 rounded-lg border outline-none appearance-none cursor-pointer ${
-                                    inv.status === InvoiceStatus.PAID ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' :
-                                    inv.status === InvoiceStatus.SENT ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30' :
-                                    'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                                }`}
-                            >
-                                <option value={InvoiceStatus.DRAFT}>{t('inv.draft')}</option>
-                                <option value={InvoiceStatus.SENT}>{t('inv.sent')}</option>
-                                <option value={InvoiceStatus.PAID}>{t('inv.paid')}</option>
-                            </select>
+                            <div className="relative">
+                                <select 
+                                    value={inv.status}
+                                    onChange={(e) => onUpdateStatus(inv.id, e.target.value as InvoiceStatus)}
+                                    className={`text-xs font-bold px-3 py-1.5 pr-6 rounded-lg border outline-none appearance-none cursor-pointer transition-colors ${
+                                        inv.status === InvoiceStatus.PAID ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' :
+                                        inv.status === InvoiceStatus.SENT ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30' :
+                                        'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                    }`}
+                                >
+                                    <option value={InvoiceStatus.DRAFT} className="bg-white dark:bg-slate-900">{t('inv.draft')}</option>
+                                    <option value={InvoiceStatus.SENT} className="bg-white dark:bg-slate-900">{t('inv.sent')}</option>
+                                    <option value={InvoiceStatus.PAID} className="bg-white dark:bg-slate-900">{t('inv.paid')}</option>
+                                </select>
+                                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" size={10} />
+                            </div>
                         )}
                         
                         <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-100 dark:border-slate-700">
@@ -1190,10 +1202,10 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
 
        {/* Email Modal */}
        {isEmailModalOpen && selectedInvoiceForEmail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[90vh]">
              {/* Email Modal Content */}
-             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400">
                       <Sparkles size={20} />
@@ -1208,7 +1220,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                 </button>
              </div>
 
-             <div className="p-6 overflow-y-auto space-y-6">
+             <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
                 <div className="flex flex-wrap gap-4 items-center">
                     <div className="flex-1 min-w-[200px]">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">{t('inv.emailTone')}</label>
@@ -1242,7 +1254,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                             value={emailDraft.subject}
                             onChange={(e) => setEmailDraft({...emailDraft, subject: e.target.value})}
                             placeholder={t('inv.subjectPlaceholder')}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white transition-all"
                         />
                     </div>
                     <div className="space-y-2">
@@ -1252,7 +1264,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
                             value={emailDraft.body}
                             onChange={(e) => setEmailDraft({...emailDraft, body: e.target.value})}
                             placeholder={t('inv.bodyPlaceholder')}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white resize-none"
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 dark:text-white resize-none transition-all"
                          />
                     </div>
                 </div>
@@ -1269,7 +1281,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
 
              </div>
 
-             <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
+             <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-end gap-3 backdrop-blur-sm">
                  <button 
                     onClick={() => setIsEmailModalOpen(false)}
                     className="px-6 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-white dark:hover:bg-slate-800 font-bold transition-colors"
