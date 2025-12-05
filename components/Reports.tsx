@@ -76,7 +76,7 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
     const summaryData = reportData.projectStats.map(p => ({
         "Client": p.clientName,
         "Project Name": p.projectName,
-        "Status": p.status,
+        "Status": p.status as string,
         "Gross Revenue": p.income,
         "Project Expenses": p.expenses,
         "Net Income": p.netIncome

@@ -15,7 +15,8 @@
     "lucide-react": "^0.555.0",
     "react-router-dom": "^7.10.0",
     "recharts": "^3.5.1",
-    "xlsx": "latest"
+    "xlsx": "latest",
+    "firebase": "^12.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

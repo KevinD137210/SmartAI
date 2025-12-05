@@ -1,6 +1,8 @@
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { subscribeToCollection, saveData, deleteData } from './services/dbService';
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, PieChart, ShoppingBag, Menu, X, Sun, Moon, Monitor, Settings as SettingsIcon, Home, Users, Calendar as CalendarIcon, Briefcase, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, FileText, PieChart, ShoppingBag, Menu, X, Sun, Moon, Monitor, Settings as SettingsIcon, Home, Users, Calendar as CalendarIcon, Briefcase, FileSpreadsheet, LogIn } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { Bookkeeping } from './components/Bookkeeping';
 import { Invoices } from './components/Invoices';
@@ -15,6 +17,10 @@ import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { Logo } from './components/Logo';
+
+// Firebase Imports
+import { getAuth, onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
+import { subscribeToCollection, saveData, deleteData } from './services/dbService';
 
 const NavigationLink = ({ to, icon: Icon, label, onClick }: any) => {
   const location = useLocation();
@@ -95,54 +101,54 @@ const MainLayout: React.FC = () => {
   const { t } = useLanguage();
   const location = useLocation();
   const pageInfo = getPageInfo(location.pathname, t);
-  
-  // State Persistence
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('transactions');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('invoices');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [clients, setClients] = useState<Client[]>(() => {
-    const saved = localStorage.getItem('clients');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [projects, setProjects] = useState<Project[]>(() => {
-    const saved = localStorage.getItem('projects');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    const saved = localStorage.getItem('events');
-    return saved ? JSON.parse(saved) : [];
-  });
-
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const auth = getAuth();
 
-  useEffect(() => {
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-  }, [transactions]);
+  // Data State (Managed by Firestore Subscriptions)
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
 
+  // 1. Handle Authentication
   useEffect(() => {
-    localStorage.setItem('invoices', JSON.stringify(invoices));
-  }, [invoices]);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        // Auto sign-in anonymously for immediate usage
+        signInAnonymously(auth).catch((error) => {
+          console.warn("Anonymous auth failed, failing back to offline mode", error);
+          // Fallback: Create a fake "offline" user to allow the app to function locally
+          setUser({ uid: 'offline', isAnonymous: true } as User);
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [auth]);
 
+  // 2. Handle Data Subscriptions (Real-time Sync)
   useEffect(() => {
-    localStorage.setItem('clients', JSON.stringify(clients));
-  }, [clients]);
+    if (!user) return; // Wait for auth
 
-  useEffect(() => {
-    localStorage.setItem('projects', JSON.stringify(projects));
-  }, [projects]);
+    const unsubTx = subscribeToCollection<Transaction>(user.uid, 'transactions', setTransactions);
+    const unsubInv = subscribeToCollection<Invoice>(user.uid, 'invoices', setInvoices);
+    const unsubClients = subscribeToCollection<Client>(user.uid, 'clients', setClients);
+    const unsubProjects = subscribeToCollection<Project>(user.uid, 'projects', setProjects);
+    const unsubEvents = subscribeToCollection<CalendarEvent>(user.uid, 'events', setEvents);
 
-  useEffect(() => {
-    localStorage.setItem('events', JSON.stringify(events));
-  }, [events]);
+    return () => {
+      if (typeof unsubTx === 'function') unsubTx();
+      if (typeof unsubInv === 'function') unsubInv();
+      if (typeof unsubClients === 'function') unsubClients();
+      if (typeof unsubProjects === 'function') unsubProjects();
+      if (typeof unsubEvents === 'function') unsubEvents();
+    };
+  }, [user]);
 
   // Notification Permission
   useEffect(() => {
@@ -167,14 +173,12 @@ const MainLayout: React.FC = () => {
                 // Logic: 
                 // 1. timeDiff >= 0: It is time or past time for the reminder.
                 // 2. timeDiff < 30 * 60 * 1000: We are within a 30-minute window of the reminder time.
-                //    This handles cases where the app was inactive or backgrounded and the precise minute was missed.
-                //    It also prevents alerting for very old events (e.g. from yesterday) when opening the app.
                 if (timeDiff >= 0 && timeDiff < 30 * 60 * 1000) { 
                     if (Notification.permission === 'granted') {
                          new Notification(event.title, {
                             body: event.description || `Event starting at ${event.time}`,
                             icon: '/favicon.ico',
-                            requireInteraction: true // Keep notification until user interacts
+                            requireInteraction: true 
                          });
                     }
                     return { ...event, notified: true };
@@ -183,55 +187,85 @@ const MainLayout: React.FC = () => {
             return event;
         });
 
-        // Only update state if changes occurred to prevent infinite loop
-        if (JSON.stringify(updatedEvents) !== JSON.stringify(events)) {
-            setEvents(updatedEvents);
-        }
+        // Update local state first to prevent repeat notifications
+        const changedEvents = updatedEvents.filter((ev, idx) => ev.notified !== events[idx].notified);
+        changedEvents.forEach(ev => {
+            if (user) saveData(user.uid, 'events', ev.id, ev);
+        });
     };
 
-    // Check more frequently (10s) to be closer to "on time", but logic robust enough for throttle
     const interval = setInterval(checkReminders, 10000); 
     return () => clearInterval(interval);
-  }, [events]);
+  }, [events, user]);
 
-  // Handlers
-  const addTransaction = (t: Transaction) => setTransactions(prev => [...prev, t]);
-  const deleteTransaction = (id: string) => setTransactions(prev => prev.filter(t => t.id !== id));
+  // Handlers - Now writing to Firestore or LocalStorage
+  const addTransaction = (t: Transaction) => {
+    if (user) saveData(user.uid, 'transactions', t.id, t);
+  };
+  const deleteTransaction = (id: string) => {
+    if (user) deleteData(user.uid, 'transactions', id);
+  };
   
   const saveInvoice = (inv: Invoice) => {
-    setInvoices(prev => {
-      const exists = prev.find(i => i.id === inv.id);
-      if (exists) return prev.map(i => i.id === inv.id ? inv : i);
-      return [...prev, inv];
-    });
+    if (user) saveData(user.uid, 'invoices', inv.id, inv);
   };
-  const deleteInvoice = (id: string) => setInvoices(prev => prev.filter(i => i.id !== id));
+  const deleteInvoice = (id: string) => {
+    if (user) deleteData(user.uid, 'invoices', id);
+  };
   const updateInvoiceStatus = (id: string, status: InvoiceStatus) => {
-    setInvoices(prev => prev.map(i => i.id === id ? { ...i, status } : i));
+    if (user) {
+        const inv = invoices.find(i => i.id === id);
+        if (inv) saveData(user.uid, 'invoices', id, { ...inv, status });
+    }
   };
 
-  const addClient = (client: Client) => setClients(prev => [...prev, client]);
-  const updateClient = (client: Client) => setClients(prev => prev.map(c => c.id === client.id ? client : c));
-  const deleteClient = (id: string) => setClients(prev => prev.filter(c => c.id !== id));
-  const archiveClient = (id: string) => setClients(prev => prev.map(c => c.id === id ? { ...c, status: 'ARCHIVED' } : c));
-  const restoreClient = (id: string) => setClients(prev => prev.map(c => c.id === id ? { ...c, status: 'ACTIVE' } : c));
+  const addClient = (client: Client) => {
+    if (user) saveData(user.uid, 'clients', client.id, client);
+  };
+  const updateClient = (client: Client) => {
+    if (user) saveData(user.uid, 'clients', client.id, client);
+  };
+  const deleteClient = (id: string) => {
+    if (user) deleteData(user.uid, 'clients', id);
+  };
+  const archiveClient = (id: string) => {
+    if (user) {
+        const c = clients.find(c => c.id === id);
+        if (c) saveData(user.uid, 'clients', id, { ...c, status: 'ARCHIVED' });
+    }
+  };
+  const restoreClient = (id: string) => {
+    if (user) {
+        const c = clients.find(c => c.id === id);
+        if (c) saveData(user.uid, 'clients', id, { ...c, status: 'ACTIVE' });
+    }
+  };
 
+  const addProject = (project: Project) => {
+    if (user) saveData(user.uid, 'projects', project.id, project);
+  };
+  const updateProject = (project: Project) => {
+    if (user) saveData(user.uid, 'projects', project.id, project);
+  };
+  const deleteProject = (id: string) => {
+    if (user) deleteData(user.uid, 'projects', id);
+  };
 
-  const addProject = (project: Project) => setProjects(prev => [...prev, project]);
-  const updateProject = (project: Project) => setProjects(prev => prev.map(p => p.id === project.id ? project : p));
-  const deleteProject = (id: string) => setProjects(prev => prev.filter(p => p.id !== id));
-
-  const addEvent = (event: CalendarEvent) => setEvents(prev => [...prev, event]);
-  const updateEvent = (event: CalendarEvent) => setEvents(prev => prev.map(e => e.id === event.id ? event : e));
-  const deleteEvent = (id: string) => setEvents(prev => prev.filter(e => e.id !== id));
+  const addEvent = (event: CalendarEvent) => {
+    if (user) saveData(user.uid, 'events', event.id, event);
+  };
+  const updateEvent = (event: CalendarEvent) => {
+    if (user) saveData(user.uid, 'events', event.id, event);
+  };
+  const deleteEvent = (id: string) => {
+    if (user) deleteData(user.uid, 'events', id);
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-hidden transition-colors duration-300">
-        {/* Sidebar Navigation (Desktop) - Floating Island Style */}
-        {/* Changed from md:flex to lg:flex to provide better tablet experience with mobile menu */}
+        {/* Sidebar Navigation (Desktop) */}
         <aside className="hidden lg:flex flex-col w-72 p-6">
             <div className="flex flex-col h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-3xl shadow-2xl shadow-indigo-500/5">
-                {/* Redesigned Sidebar Header: Vertical Layout */}
                 <Link to="/" className="flex flex-col items-center gap-5 px-6 py-10 border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group">
                     <div className="w-20 h-20 p-2 bg-white dark:bg-slate-800 rounded-full shadow-lg shadow-indigo-500/10 dark:shadow-indigo-500/20 ring-1 ring-slate-100 dark:ring-slate-700 group-hover:scale-105 transition-transform">
                         <Logo className="w-full h-full" />
@@ -254,15 +288,18 @@ const MainLayout: React.FC = () => {
 
                 <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-4">
                     <ThemeToggle />
+                    {user?.uid === 'offline' && (
+                        <div className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold rounded-full border border-amber-200 dark:border-amber-800">
+                            OFFLINE MODE
+                        </div>
+                    )}
                     <p className="text-xs text-slate-400 text-center">{t('nav.footer')}</p>
                 </div>
             </div>
         </aside>
 
         {/* Mobile Header & Menu Overlay */}
-        {/* Changed from md:hidden to lg:hidden to show on tablets */}
         <div className="lg:hidden fixed inset-0 z-40 pointer-events-none">
-            {/* Header Bar */}
             <div className="pointer-events-auto absolute top-0 left-0 right-0 h-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 transition-colors duration-300 relative">
                  <div className="flex items-center gap-4 overflow-hidden z-10">
                     <div className="flex flex-col overflow-hidden min-w-0">
@@ -288,7 +325,6 @@ const MainLayout: React.FC = () => {
                 </div>
             </div>
 
-            {/* Mobile Menu Content */}
             {isMobileMenuOpen && (
                 <div className="pointer-events-auto absolute top-20 inset-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-sm z-50 p-6 animate-fadeIn">
                     <div className="flex justify-center mb-8">
@@ -302,77 +338,85 @@ const MainLayout: React.FC = () => {
         </div>
 
         {/* Main Content Area */}
-        {/* Changed padding top breakpoint from md to lg */}
         <main className="flex-1 overflow-y-auto w-full pt-20 lg:pt-0 relative">
             <div className="min-h-full rounded-3xl">
-                {/* Global Page Header - Hidden on Mobile, Visible on Desktop */}
                 <PageHeader title={pageInfo?.title} subtitle={pageInfo?.subtitle} />
                 
                 <div className="max-w-7xl mx-auto p-4 md:p-8 pb-20">
-                    <Routes>
-                        <Route path="/" element={<Dashboard transactions={transactions} invoices={invoices} projects={projects} />} />
-                        <Route path="/bookkeeping" element={
-                            <Bookkeeping 
-                                transactions={transactions} 
-                                projects={projects}
-                                onAddTransaction={addTransaction} 
-                                onDeleteTransaction={deleteTransaction} 
-                            />
-                        } />
-                        <Route path="/invoices" element={
-                            <Invoices 
-                                invoices={invoices} 
-                                clients={clients} 
-                                projects={projects}
-                                onSaveInvoice={saveInvoice} 
-                                onDeleteInvoice={deleteInvoice} 
-                                onUpdateStatus={updateInvoiceStatus}
-                                onArchiveClient={archiveClient}
-                                onUpdateProject={updateProject}
-                            />
-                        } />
-                        <Route path="/clients" element={
-                            <Clients 
-                                clients={clients} 
-                                projects={projects}
-                                onAdd={addClient} 
-                                onUpdate={updateClient} 
-                                onDelete={deleteClient} 
-                                onArchive={archiveClient}
-                                onRestore={restoreClient}
-                                onAddProject={addProject}
-                            />
-                        } />
-                        <Route path="/projects" element={
-                            <Projects 
-                                projects={projects}
-                                clients={clients}
-                                invoices={invoices}
-                                onAdd={addProject}
-                                onUpdate={updateProject}
-                                onDelete={deleteProject}
-                                onSaveInvoice={saveInvoice}
-                            />
-                        } />
-                        <Route path="/calendar" element={
-                            <Calendar 
-                                events={events}
-                                onAddEvent={addEvent}
-                                onUpdateEvent={updateEvent}
-                                onDeleteEvent={deleteEvent}
-                            />
-                        } />
-                        <Route path="/reports" element={
-                            <Reports 
-                                transactions={transactions}
-                                invoices={invoices}
-                                projects={projects}
-                                clients={clients}
-                            />
-                        } />
-                        <Route path="/price-check" element={<PriceCheck />} />
-                        <Route path="/settings" element={<Settings />} />
-                    </Routes>
+                    {user ? (
+                        <Routes>
+                            <Route path="/" element={<Dashboard transactions={transactions} invoices={invoices} projects={projects} />} />
+                            <Route path="/bookkeeping" element={
+                                <Bookkeeping 
+                                    transactions={transactions} 
+                                    projects={projects}
+                                    onAddTransaction={addTransaction} 
+                                    onDeleteTransaction={deleteTransaction} 
+                                />
+                            } />
+                            <Route path="/invoices" element={
+                                <Invoices 
+                                    invoices={invoices} 
+                                    clients={clients} 
+                                    projects={projects}
+                                    onSaveInvoice={saveInvoice} 
+                                    onDeleteInvoice={deleteInvoice} 
+                                    onUpdateStatus={updateInvoiceStatus}
+                                    onArchiveClient={archiveClient}
+                                    onUpdateProject={updateProject}
+                                />
+                            } />
+                            <Route path="/clients" element={
+                                <Clients 
+                                    clients={clients} 
+                                    projects={projects}
+                                    onAdd={addClient} 
+                                    onUpdate={updateClient} 
+                                    onDelete={deleteClient} 
+                                    onArchive={archiveClient}
+                                    onRestore={restoreClient}
+                                    onAddProject={addProject}
+                                />
+                            } />
+                            <Route path="/projects" element={
+                                <Projects 
+                                    projects={projects}
+                                    clients={clients}
+                                    invoices={invoices}
+                                    onAdd={addProject}
+                                    onUpdate={updateProject}
+                                    onDelete={deleteProject}
+                                    onSaveInvoice={saveInvoice}
+                                />
+                            } />
+                            <Route path="/calendar" element={
+                                <Calendar 
+                                    events={events}
+                                    onAddEvent={addEvent}
+                                    onUpdateEvent={updateEvent}
+                                    onDeleteEvent={deleteEvent}
+                                />
+                            } />
+                            <Route path="/reports" element={
+                                <Reports 
+                                    transactions={transactions}
+                                    invoices={invoices}
+                                    projects={projects}
+                                    clients={clients}
+                                />
+                            } />
+                            <Route path="/price-check" element={<PriceCheck />} />
+                            <Route path="/settings" element={<Settings />} />
+                        </Routes>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+                            <div className="p-4 bg-indigo-100 dark:bg-indigo-900/30 rounded-full animate-pulse">
+                                <LogIn size={40} className="text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Connecting to Database...</h2>
+                            <p className="text-slate-500 dark:text-slate-400">Synchronizing your financial data securely.</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </main>
