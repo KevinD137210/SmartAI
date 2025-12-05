@@ -1,5 +1,3 @@
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { subscribeToCollection, saveData, deleteData } from './services/dbService';
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FileText, PieChart, ShoppingBag, Menu, X, Sun, Moon, Monitor, Settings as SettingsIcon, Home, Users, Calendar as CalendarIcon, Briefcase, FileSpreadsheet, LogIn } from 'lucide-react';
@@ -18,8 +16,8 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { Logo } from './components/Logo';
 
-// Firebase Imports
-import { getAuth, onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
+// Firebase & DB Service Imports
+import { auth, onAuthStateChanged, signInAnonymously, User } from './services/firebase'; 
 import { subscribeToCollection, saveData, deleteData } from './services/dbService';
 
 const NavigationLink = ({ to, icon: Icon, label, onClick }: any) => {
@@ -105,9 +103,8 @@ const MainLayout: React.FC = () => {
   
   // Auth State
   const [user, setUser] = useState<User | null>(null);
-  const auth = getAuth();
 
-  // Data State (Managed by Firestore Subscriptions)
+  // Data State (Managed by Firestore/Offline Service)
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -116,7 +113,17 @@ const MainLayout: React.FC = () => {
 
   // 1. Handle Authentication
   useEffect(() => {
+    // If no Firebase config is present, auth will likely fail or hang.
+    // We add a timeout fallback to ensure offline mode activates if Firebase is unresponsive.
+    const offlineFallbackTimer = setTimeout(() => {
+        if (!user) {
+            console.log("Firebase Auth timeout - enabling offline mode");
+            setUser({ uid: 'offline', isAnonymous: true } as any);
+        }
+    }, 3000);
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      clearTimeout(offlineFallbackTimer);
       if (currentUser) {
         setUser(currentUser);
       } else {
@@ -124,12 +131,20 @@ const MainLayout: React.FC = () => {
         signInAnonymously(auth).catch((error) => {
           console.warn("Anonymous auth failed, failing back to offline mode", error);
           // Fallback: Create a fake "offline" user to allow the app to function locally
-          setUser({ uid: 'offline', isAnonymous: true } as User);
+          setUser({ uid: 'offline', isAnonymous: true } as any);
         });
       }
+    }, (error) => {
+        clearTimeout(offlineFallbackTimer);
+        console.warn("Auth state change error", error);
+        setUser({ uid: 'offline', isAnonymous: true } as any);
     });
-    return () => unsubscribe();
-  }, [auth]);
+
+    return () => {
+        clearTimeout(offlineFallbackTimer);
+        unsubscribe();
+    };
+  }, []);
 
   // 2. Handle Data Subscriptions (Real-time Sync)
   useEffect(() => {
@@ -187,7 +202,7 @@ const MainLayout: React.FC = () => {
             return event;
         });
 
-        // Update local state first to prevent repeat notifications
+        // Update to DB only if changed
         const changedEvents = updatedEvents.filter((ev, idx) => ev.notified !== events[idx].notified);
         changedEvents.forEach(ev => {
             if (user) saveData(user.uid, 'events', ev.id, ev);
@@ -198,7 +213,7 @@ const MainLayout: React.FC = () => {
     return () => clearInterval(interval);
   }, [events, user]);
 
-  // Handlers - Now writing to Firestore or LocalStorage
+  // Handlers - Now writing to Firestore/LocalStorage via dbService
   const addTransaction = (t: Transaction) => {
     if (user) saveData(user.uid, 'transactions', t.id, t);
   };

@@ -37,7 +37,7 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
         const projectIncome = invoices
             .filter(inv => 
                 inv.projectId === project.id && 
-                inv.status === InvoiceStatus.PAID &&
+                inv.status === InvoiceStatus.PAID && 
                 inv.type === DocumentType.INVOICE &&
                 isWithinPeriod(inv.date)
             )
@@ -73,10 +73,11 @@ export const Reports: React.FC<ReportsProps> = ({ transactions, invoices, projec
     const workbook = XLSX.utils.book_new();
 
     // --- Sheet 1: Project Summary (P&L) ---
-    const summaryData = reportData.projectStats.map(p => ({
+    // Explicitly type as any[] to allow string values in Total row
+    const summaryData: any[] = reportData.projectStats.map(p => ({
         "Client": p.clientName,
         "Project Name": p.projectName,
-        "Status": p.status as string,
+        "Status": p.status,
         "Gross Revenue": p.income,
         "Project Expenses": p.expenses,
         "Net Income": p.netIncome

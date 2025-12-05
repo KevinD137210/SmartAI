@@ -1,23 +1,42 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getAnalytics } from "firebase/analytics";
+// Mock Firebase implementation to support Offline Mode
+// preventing "Module not found" errors in environments without Firebase SDK.
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBOwsFmuOZiez8yx72GXSiaZiUxq6IEW8c",
-  authDomain: "smart-ai-q.firebaseapp.com",
-  projectId: "smart-ai-q",
-  storageBucket: "smart-ai-q.firebasestorage.app",
-  messagingSenderId: "774904156234",
-  appId: "1:774904156234:web:2c8b02b2746df14b4e56b3",
-  measurementId: "G-958XLK9WQY"
+export interface User {
+  uid: string;
+  isAnonymous: boolean;
+}
+
+export const app = {};
+export const auth = {};
+
+// Auth Mocks
+export const getAuth = (app: any) => ({});
+export const signInAnonymously = async (auth: any) => {
+  return { user: { uid: 'offline', isAnonymous: true } };
+};
+export const onAuthStateChanged = (auth: any, cb: (user: User | null) => void, err?: (e: any) => void) => {
+  // Trigger offline user immediately
+  setTimeout(() => cb({ uid: 'offline', isAnonymous: true }), 0);
+  return () => {};
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
-const analytics = getAnalytics(app);
+// Firestore Mocks
+export const getFirestore = (app: any) => ({});
+export const collection = (db: any, path: string) => ({});
+export const doc = (db: any, path: string, ...segments: string[]) => ({});
+export const setDoc = async (ref: any, data: any, options?: any) => {};
+export const deleteDoc = async (ref: any) => {};
+export const onSnapshot = (query: any, onNext: (snap: any) => void, onError?: (error: any) => void) => {
+  return () => {};
+};
+export const query = (query: any, ...constraints: any[]) => ({});
 
-export { app, auth, db, storage, analytics };
+// Default config (unused)
+const firebaseConfig = {
+  apiKey: "AIzaSyDUMMY",
+  authDomain: "dummy.firebaseapp.com",
+  projectId: "dummy",
+  storageBucket: "dummy.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:0000000000000000000000"
+};

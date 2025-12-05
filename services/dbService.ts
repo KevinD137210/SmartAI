@@ -1,14 +1,14 @@
 import { 
-  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query 
-} from "firebase/firestore";
-import { app } from "./firebase";
+  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, app 
+} from "./firebase";
 import { Transaction, Invoice, Client, Project, CalendarEvent } from "../types";
 
 const db = getFirestore(app);
 const localEvents = new EventTarget();
 
 // Generic Real-time Listener with Offline Fallback
-export const subscribeToCollection = <T>(
+// Uses <T,> to avoid TSX parsing ambiguity
+export const subscribeToCollection = <T,>(
   userId: string, 
   collectionName: string, 
   callback: (data: T[]) => void
@@ -45,10 +45,11 @@ export const subscribeToCollection = <T>(
     );
 
     return onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map(doc => doc.data() as T);
+        const data = snapshot.docs.map((doc: any) => doc.data() as T);
         callback(data);
     }, (error) => {
-        console.error(`Error listening to ${collectionName}:`, error);
+        console.warn(`Error listening to ${collectionName}, failing gracefully to empty array:`, error);
+        // We could also fallback to local storage here if we wanted hybrid sync
     });
   } catch (e) {
     console.error("Firestore init error", e);
@@ -83,7 +84,6 @@ export const saveData = async (userId: string, collectionName: string, docId: st
     const path = `users/${userId}/${collectionName}`;
     const dataWithUser = { ...data, userId: userId }; 
     await setDoc(doc(db, path, docId), dataWithUser, { merge: true });
-    console.log(`Saved to ${collectionName}`);
   } catch (error) {
     console.error(`Error saving to ${collectionName}:`, error);
     throw error;

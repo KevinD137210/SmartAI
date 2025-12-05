@@ -16,7 +16,7 @@
     "react-router-dom": "^7.10.0",
     "recharts": "^3.5.1",
     "xlsx": "latest",
-    "firebase": "^12.6.0"
+    "firebase": "^10.8.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
