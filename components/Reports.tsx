@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Transaction, Invoice, Project, Client, TransactionType, DocumentType, InvoiceStatus } from '../types';
 import { FileSpreadsheet, Download, Filter, Calendar as CalendarIcon, PieChart, TrendingUp, TrendingDown, DollarSign, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 interface ReportsProps {
   transactions: Transaction[];
