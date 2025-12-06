@@ -1,26 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FileText, PieChart, ShoppingBag, Menu, X, Sun, Moon, Monitor, Settings as SettingsIcon, Home, Users, Calendar as CalendarIcon, Briefcase, FileSpreadsheet, LogIn } from 'lucide-react';
-import { Dashboard } from './components/Dashboard';
-import { Bookkeeping } from './components/Bookkeeping';
-import { Invoices } from './components/Invoices';
-import { PriceCheck } from './components/PriceCheck';
-import { Settings } from './components/Settings';
-import { Clients } from './components/Clients';
-import { Calendar } from './components/Calendar';
-import { Projects } from './components/Projects';
-import { Reports } from './components/Reports';
 import { Transaction, Invoice, InvoiceStatus, Client, CalendarEvent, Project } from './types';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { Logo } from './components/Logo';
 
+// Lazy load components for code splitting
+const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const Bookkeeping = lazy(() => import('./components/Bookkeeping').then(m => ({ default: m.Bookkeeping })));
+const Invoices = lazy(() => import('./components/Invoices').then(m => ({ default: m.Invoices })));
+const PriceCheck = lazy(() => import('./components/PriceCheck').then(m => ({ default: m.PriceCheck })));
+const Settings = lazy(() => import('./components/Settings').then(m => ({ default: m.Settings })));
+const Clients = lazy(() => import('./components/Clients').then(m => ({ default: m.Clients })));
+const Calendar = lazy(() => import('./components/Calendar').then(m => ({ default: m.Calendar })));
+const Projects = lazy(() => import('./components/Projects').then(m => ({ default: m.Projects })));
+const Reports = lazy(() => import('./components/Reports').then(m => ({ default: m.Reports })));
+
 // Firebase & DB Service Imports
 import { auth, onAuthStateChanged, signInAnonymously, User } from './services/firebase'; 
 import { subscribeToCollection, saveData, deleteData } from './services/dbService';
 
-const NavigationLink = ({ to, icon: Icon, label, onClick }: any) => {
+const NavigationLink = React.memo(({ to, icon: Icon, label, onClick }: any) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   return (
@@ -37,7 +39,7 @@ const NavigationLink = ({ to, icon: Icon, label, onClick }: any) => {
       <span className="font-medium tracking-wide">{label}</span>
     </Link>
   );
-};
+});
 
 const ThemeToggle = () => {
   const { theme, setTheme } = useTheme();
@@ -82,7 +84,7 @@ const getPageInfo = (pathname: string, t: (key: string) => string) => {
     return headers[pathname];
 };
 
-const PageHeader: React.FC<{title?: string, subtitle?: string}> = ({ title, subtitle }) => {
+const PageHeader = React.memo<{title?: string, subtitle?: string}>(({ title, subtitle }) => {
     if (!title) return null;
   
     return (
@@ -93,7 +95,7 @@ const PageHeader: React.FC<{title?: string, subtitle?: string}> = ({ title, subt
          </div>
       </header>
     );
-};
+});
 
 const MainLayout: React.FC = () => {
   const { t } = useLanguage();
@@ -172,44 +174,47 @@ const MainLayout: React.FC = () => {
     }
   }, []);
 
-  // Check Reminders Interval
+  // Check Reminders Interval - Optimized
   useEffect(() => {
+    // Early return if no events with reminders
+    const eventsWithReminders = events.filter(e => 
+      e.reminderMinutes !== undefined && !e.notified && e.date && e.time
+    );
+    
+    if (eventsWithReminders.length === 0) return;
+
     const checkReminders = () => {
         const now = new Date();
-        const updatedEvents = events.map(event => {
-            if (event.reminderMinutes !== undefined && !event.notified && event.date && event.time) {
-                const eventTime = new Date(`${event.date}T${event.time}`);
-                // Use a proper calculation for reminder time
-                const reminderTime = new Date(eventTime.getTime() - event.reminderMinutes * 60000);
-                
-                // Calculate difference: positive if now is PAST reminderTime
-                const timeDiff = now.getTime() - reminderTime.getTime();
-                
-                // Logic: 
-                // 1. timeDiff >= 0: It is time or past time for the reminder.
-                // 2. timeDiff < 30 * 60 * 1000: We are within a 30-minute window of the reminder time.
-                if (timeDiff >= 0 && timeDiff < 30 * 60 * 1000) { 
-                    if (Notification.permission === 'granted') {
-                         new Notification(event.title, {
-                            body: event.description || `Event starting at ${event.time}`,
-                            icon: '/favicon.ico',
-                            requireInteraction: true 
-                         });
-                    }
-                    return { ...event, notified: true };
+        const nowTime = now.getTime();
+        const changedEvents: CalendarEvent[] = [];
+        
+        // Only process events with pending reminders
+        for (const event of eventsWithReminders) {
+            const eventTime = new Date(`${event.date}T${event.time}`);
+            const reminderTime = eventTime.getTime() - (event.reminderMinutes! * 60000);
+            const timeDiff = nowTime - reminderTime;
+            
+            // Check if reminder should fire (within 30-minute window)
+            if (timeDiff >= 0 && timeDiff < 1800000) { // 30 * 60 * 1000
+                if (Notification.permission === 'granted') {
+                     new Notification(event.title, {
+                        body: event.description || `Event starting at ${event.time}`,
+                        icon: '/favicon.ico',
+                        requireInteraction: true 
+                     });
                 }
+                changedEvents.push({ ...event, notified: true });
             }
-            return event;
-        });
+        }
 
-        // Update to DB only if changed
-        const changedEvents = updatedEvents.filter((ev, idx) => ev.notified !== events[idx].notified);
-        changedEvents.forEach(ev => {
-            if (user) saveData(user.uid, 'events', ev.id, ev);
-        });
+        // Batch update only changed events
+        if (changedEvents.length > 0 && user) {
+            changedEvents.forEach(ev => saveData(user.uid, 'events', ev.id, ev));
+        }
     };
 
-    const interval = setInterval(checkReminders, 10000); 
+    const interval = setInterval(checkReminders, 60000); // Check every 60s (30-min window ensures no missed reminders)
+    checkReminders(); // Run immediately on mount
     return () => clearInterval(interval);
   }, [events, user]);
 
@@ -359,70 +364,80 @@ const MainLayout: React.FC = () => {
                 
                 <div className="max-w-7xl mx-auto p-4 md:p-8 pb-20">
                     {user ? (
-                        <Routes>
-                            <Route path="/" element={<Dashboard transactions={transactions} invoices={invoices} projects={projects} />} />
-                            <Route path="/bookkeeping" element={
-                                <Bookkeeping 
-                                    transactions={transactions} 
-                                    projects={projects}
-                                    onAddTransaction={addTransaction} 
-                                    onDeleteTransaction={deleteTransaction} 
-                                />
-                            } />
-                            <Route path="/invoices" element={
-                                <Invoices 
-                                    invoices={invoices} 
-                                    clients={clients} 
-                                    projects={projects}
-                                    onSaveInvoice={saveInvoice} 
-                                    onDeleteInvoice={deleteInvoice} 
-                                    onUpdateStatus={updateInvoiceStatus}
-                                    onArchiveClient={archiveClient}
-                                    onUpdateProject={updateProject}
-                                />
-                            } />
-                            <Route path="/clients" element={
-                                <Clients 
-                                    clients={clients} 
-                                    projects={projects}
-                                    onAdd={addClient} 
-                                    onUpdate={updateClient} 
-                                    onDelete={deleteClient} 
-                                    onArchive={archiveClient}
-                                    onRestore={restoreClient}
-                                    onAddProject={addProject}
-                                />
-                            } />
-                            <Route path="/projects" element={
-                                <Projects 
-                                    projects={projects}
-                                    clients={clients}
-                                    invoices={invoices}
-                                    onAdd={addProject}
-                                    onUpdate={updateProject}
-                                    onDelete={deleteProject}
-                                    onSaveInvoice={saveInvoice}
-                                />
-                            } />
-                            <Route path="/calendar" element={
-                                <Calendar 
-                                    events={events}
-                                    onAddEvent={addEvent}
-                                    onUpdateEvent={updateEvent}
-                                    onDeleteEvent={deleteEvent}
-                                />
-                            } />
-                            <Route path="/reports" element={
-                                <Reports 
-                                    transactions={transactions}
-                                    invoices={invoices}
-                                    projects={projects}
-                                    clients={clients}
-                                />
-                            } />
-                            <Route path="/price-check" element={<PriceCheck />} />
-                            <Route path="/settings" element={<Settings />} />
-                        </Routes>
+                        <Suspense fallback={
+                            <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+                                <div className="p-4 bg-indigo-100 dark:bg-indigo-900/30 rounded-full animate-pulse">
+                                    <LayoutDashboard size={40} className="text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Loading...</h2>
+                                <p className="text-slate-500 dark:text-slate-400">Please wait a moment.</p>
+                            </div>
+                        }>
+                            <Routes>
+                                <Route path="/" element={<Dashboard transactions={transactions} invoices={invoices} projects={projects} />} />
+                                <Route path="/bookkeeping" element={
+                                    <Bookkeeping 
+                                        transactions={transactions} 
+                                        projects={projects}
+                                        onAddTransaction={addTransaction} 
+                                        onDeleteTransaction={deleteTransaction} 
+                                    />
+                                } />
+                                <Route path="/invoices" element={
+                                    <Invoices 
+                                        invoices={invoices} 
+                                        clients={clients} 
+                                        projects={projects}
+                                        onSaveInvoice={saveInvoice} 
+                                        onDeleteInvoice={deleteInvoice} 
+                                        onUpdateStatus={updateInvoiceStatus}
+                                        onArchiveClient={archiveClient}
+                                        onUpdateProject={updateProject}
+                                    />
+                                } />
+                                <Route path="/clients" element={
+                                    <Clients 
+                                        clients={clients} 
+                                        projects={projects}
+                                        onAdd={addClient} 
+                                        onUpdate={updateClient} 
+                                        onDelete={deleteClient} 
+                                        onArchive={archiveClient}
+                                        onRestore={restoreClient}
+                                        onAddProject={addProject}
+                                    />
+                                } />
+                                <Route path="/projects" element={
+                                    <Projects 
+                                        projects={projects}
+                                        clients={clients}
+                                        invoices={invoices}
+                                        onAdd={addProject}
+                                        onUpdate={updateProject}
+                                        onDelete={deleteProject}
+                                        onSaveInvoice={saveInvoice}
+                                    />
+                                } />
+                                <Route path="/calendar" element={
+                                    <Calendar 
+                                        events={events}
+                                        onAddEvent={addEvent}
+                                        onUpdateEvent={updateEvent}
+                                        onDeleteEvent={deleteEvent}
+                                    />
+                                } />
+                                <Route path="/reports" element={
+                                    <Reports 
+                                        transactions={transactions}
+                                        invoices={invoices}
+                                        projects={projects}
+                                        clients={clients}
+                                    />
+                                } />
+                                <Route path="/price-check" element={<PriceCheck />} />
+                                <Route path="/settings" element={<Settings />} />
+                            </Routes>
+                        </Suspense>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
                             <div className="p-4 bg-indigo-100 dark:bg-indigo-900/30 rounded-full animate-pulse">

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Transaction, TransactionType, Project } from '../types';
 import { Plus, Trash2, ArrowUpCircle, ArrowDownCircle, Calendar, Tag, Loader2, MapPin, ShoppingBag, Store, X, ScanLine, Camera, Image as ImageIcon, Briefcase, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -108,12 +108,18 @@ export const Bookkeeping: React.FC<BookkeepingProps> = ({ transactions, projects
       }
   };
 
-  const filteredTransactions = transactions
-    .filter(t => filterType === 'ALL' || t.type === filterType)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const filteredTransactions = useMemo(() => 
+    transactions
+      .filter(t => filterType === 'ALL' || t.type === filterType)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [transactions, filterType]
+  );
 
-  // Filter Active Projects for selection
-  const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
+  // Filter Active Projects for selection - memoized
+  const activeProjects = useMemo(() => 
+    projects.filter(p => p.status !== 'ARCHIVED'),
+    [projects]
+  );
 
   return (
     <div className="space-y-6 animate-fadeIn pb-10">

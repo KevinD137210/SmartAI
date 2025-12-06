@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Project, Client, ProjectStatus, Invoice, DocumentType, InvoiceStatus } from '../types';
 import { Plus, Edit2, Trash2, Search, Briefcase, FolderOpen, CheckCircle, X, ChevronDown, FileText } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -42,11 +42,17 @@ export const Projects: React.FC<ProjectsProps> = ({ projects, clients, invoices,
     }
   }, [location.state, projects]);
 
-  // Filter Active clients for new projects
-  const activeClients = clients.filter(c => c.status !== 'ARCHIVED');
+  // Memoized filtered data for better performance
+  const activeClients = useMemo(() => 
+    clients.filter(c => c.status !== 'ARCHIVED'),
+    [clients]
+  );
 
-  const filteredProjects = projects.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProjects = useMemo(() =>
+    projects.filter(p => 
+      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [projects, searchTerm]
   );
 
   const handleOpenModal = (project?: Project) => {

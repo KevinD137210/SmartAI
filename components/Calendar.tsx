@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarEvent } from '../types';
 import { ChevronLeft, ChevronRight, Plus, X, Clock, Bell, Trash2, Calendar as CalendarIcon, List } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -117,9 +117,13 @@ export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdate
       setEditingEvent({ ...editingEvent, reminderMinutes: value });
   };
 
-  const renderCalendarDays = () => {
+  // Memoize calendar days calculation for better performance
+  const calendarDays = useMemo(() => {
     const daysInMonth = getDaysInMonth(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
+    const today = new Date().toISOString().split('T')[0];
+    const year = currentDate.getFullYear();
+    const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
     const days = [];
 
     // Empty cells for days before start of month
@@ -129,10 +133,9 @@ export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdate
 
     // Days of month
     for (let day = 1; day <= daysInMonth; day++) {
-      const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
       const dayStr = day.toString().padStart(2, '0');
-      const dateStr = `${currentDate.getFullYear()}-${month}-${dayStr}`;
-      const isToday = new Date().toISOString().split('T')[0] === dateStr;
+      const dateStr = `${year}-${month}-${dayStr}`;
+      const isToday = today === dateStr;
       
       const dayEvents = events.filter(e => e.date === dateStr);
 
@@ -167,7 +170,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdate
     }
 
     return days;
-  };
+  }, [currentDate, events]); // Memoized calendar days
 
   const renderListView = () => {
     const monthEvents = events.filter(e => {
@@ -277,7 +280,7 @@ export const Calendar: React.FC<CalendarProps> = ({ events, onAddEvent, onUpdate
                 </div>
                 {/* Days Grid - Changed overflow-hidden to overflow-y-auto to fix cutting off */}
                 <div className="grid grid-cols-7 flex-1 overflow-y-auto">
-                    {renderCalendarDays()}
+                    {calendarDays}
                 </div>
              </>
           ) : (

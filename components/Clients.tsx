@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Client, Project } from '../types';
 import { Plus, Edit2, Trash2, Search, User, Mail, Phone, MapPin, Building, FileText, X, Archive, RefreshCw, Briefcase, ChevronRight, FolderOpen, ArrowRightCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -51,10 +51,14 @@ export const Clients: React.FC<ClientsProps> = ({ clients, projects = [], onAdd,
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [newProject, setNewProject] = useState<Project>(EmptyProject);
 
-  const filteredClients = clients.filter(c => 
-    (c.status === filterStatus || (!c.status && filterStatus === 'ACTIVE')) && // Handle legacy data
-    (c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  // Memoized filtered clients for better performance
+  const filteredClients = useMemo(() => 
+    clients.filter(c => 
+      (c.status === filterStatus || (!c.status && filterStatus === 'ACTIVE')) && // Handle legacy data
+      (c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    ),
+    [clients, filterStatus, searchTerm]
   );
 
   const handleOpenModal = (client?: Client) => {
