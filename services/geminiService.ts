@@ -136,23 +136,28 @@ export const checkMarketPrice = async (query: string, targetLocale: string): Pro
 
 // Optimized Helper function to filter sources
 function filterSources(sources: { title: string; uri: string }[], targetLocale: string) {
+    if (sources.length === 0) return [];
+    
     const seenDomains = new Set<string>();
     const filtered: { title: string; uri: string }[] = [];
+    const MAX_SOURCES = 20;
 
-    // Simple deduplication by hostname
-    for (const item of sources) {
+    // Single pass through sources with early exit
+    for (let i = 0; i < sources.length && filtered.length < MAX_SOURCES; i++) {
+        const item = sources[i];
         try {
             const hostname = new URL(item.uri).hostname.replace(/^www\./, '');
             if (!seenDomains.has(hostname)) {
                 seenDomains.add(hostname);
                 filtered.push(item);
             }
-        } catch (e) {
-            filtered.push(item);
+        } catch {
+            // Skip invalid URLs instead of adding them
+            continue;
         }
     }
 
-    return filtered.slice(0, 20); 
+    return filtered;
 }
 
 export const translateText = async (text: string, targetLocale: string): Promise<string> => {
@@ -247,19 +252,23 @@ export const generateTermsAndConditions = async (docLanguage: string, docType: s
   }
 };
 
+// Helper function to convert file to base64 - DRY principle
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 export const analyzeReceipt = async (imageFile: File): Promise<Partial<Transaction>> => {
   try {
     const modelId = 'gemini-2.5-flash';
-    
-    const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(imageFile);
-        reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1]); 
-        };
-        reader.onerror = error => reject(error);
-    });
+    const base64Data = await fileToBase64(imageFile);
 
     const prompt = `
     Analyze this receipt image. Extract data into the specified JSON structure.
@@ -314,16 +323,7 @@ export const analyzeReceipt = async (imageFile: File): Promise<Partial<Transacti
 export const identifyProductFromImage = async (imageFile: File, targetLocale: string): Promise<string> => {
   try {
     const modelId = 'gemini-2.5-flash';
-    
-    const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(imageFile);
-        reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(',')[1]); 
-        };
-        reader.onerror = error => reject(error);
-    });
+    const base64Data = await fileToBase64(imageFile);
 
     const prompt = `Identify the main commercial product. Return ONLY the specific product model name in the language of ${targetLocale}. Do not add extra words.`;
 

@@ -29,34 +29,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
       .filter(t => t.type === TransactionType.EXPENSE)
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const now = new Date();
-    const VALIDITY_DAYS = 15;
+    const now = Date.now(); // Use timestamp for performance
+    const VALIDITY_MS = 15 * 24 * 60 * 60 * 1000; // Pre-calculate validity in milliseconds
 
-    // Filter Active Quotes: Type is Quote, Status is not Paid, and either not sent or sent within 15 days
-    const activeQuotes = invoices.filter(i => {
-        if (i.type !== DocumentType.QUOTATION || i.status === InvoiceStatus.PAID) return false;
-        
-        if (i.emailSentAt) {
-            const sentDate = new Date(i.emailSentAt);
-            const diffTime = Math.abs(now.getTime() - sentDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays <= VALIDITY_DAYS;
-        }
-        return true; // Drafts or not emailed yet are considered active
-    }).length;
+    let activeQuotes = 0;
+    let invalidCases = 0;
 
-    // Filter Invalid/Expired Quotes: Type is Quote, not Paid, and Sent > 15 days ago
-    const invalidCases = invoices.filter(i => {
-        if (i.type !== DocumentType.QUOTATION || i.status === InvoiceStatus.PAID) return false;
-        
-        if (i.emailSentAt) {
-            const sentDate = new Date(i.emailSentAt);
-            const diffTime = Math.abs(now.getTime() - sentDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays > VALIDITY_DAYS;
+    // Single pass through invoices for quote calculations
+    for (const invoice of invoices) {
+      if (invoice.type === DocumentType.QUOTATION && invoice.status !== InvoiceStatus.PAID) {
+        if (invoice.emailSentAt) {
+          const sentTime = new Date(invoice.emailSentAt).getTime();
+          const age = now - sentTime;
+          
+          if (age <= VALIDITY_MS) {
+            activeQuotes++;
+          } else {
+            invalidCases++;
+          }
+        } else {
+          // Drafts or not emailed yet are considered active
+          activeQuotes++;
         }
-        return false;
-    }).length;
+      }
+    }
 
     const totalInvoices = invoices.filter(i => i.type === DocumentType.INVOICE).length;
     const closedCases = invoices.filter(i => i.status === InvoiceStatus.PAID).length;
@@ -86,8 +82,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
       return projects.find(p => p.id === id)?.name;
   };
 
-  // Get displayed list based on filter state
+  // Get displayed list based on filter state - Optimized
   const displayedList = useMemo(() => {
+      const now = Date.now();
+      const VALIDITY_MS = 15 * 24 * 60 * 60 * 1000;
+
       if (listMode === 'INVOICES') {
           return invoices
             .filter(i => i.type === DocumentType.INVOICE)
@@ -95,6 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
             .slice(0, 10);
       }
 
+      // Pre-sort quotes once
       const allQuotes = invoices
         .filter(i => i.type === DocumentType.QUOTATION)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -102,14 +102,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
       if (listMode === 'INVALID') {
           // Show only expired quotes
           return allQuotes.filter(quote => {
-              const daysRemaining = getDaysRemaining(quote.emailSentAt);
-              return quote.status !== InvoiceStatus.PAID && daysRemaining !== null && daysRemaining < 0;
+              if (quote.status === InvoiceStatus.PAID || !quote.emailSentAt) return false;
+              const age = now - new Date(quote.emailSentAt).getTime();
+              return age > VALIDITY_MS;
           });
       } else {
           // QUOTES mode: Show active/draft quotes
           return allQuotes.filter(quote => {
-               const daysRemaining = getDaysRemaining(quote.emailSentAt);
-               return quote.status === InvoiceStatus.PAID || daysRemaining === null || daysRemaining >= 0;
+               if (quote.status === InvoiceStatus.PAID) return true;
+               if (!quote.emailSentAt) return true; // Drafts
+               const age = now - new Date(quote.emailSentAt).getTime();
+               return age <= VALIDITY_MS;
           }).slice(0, 5);
       }
   }, [invoices, listMode]);
