@@ -29,7 +29,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, invoices, pr
       .filter(t => t.type === TransactionType.EXPENSE)
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const now = Date.now(); // Use timestamp for performance
+    const now = Date.now(); // Use timestamp (milliseconds) for efficient date comparisons
     const VALIDITY_MS = 15 * 24 * 60 * 60 * 1000; // Pre-calculate validity in milliseconds
 
     let activeQuotes = 0;

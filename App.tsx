@@ -213,7 +213,7 @@ const MainLayout: React.FC = () => {
         }
     };
 
-    const interval = setInterval(checkReminders, 60000); // Reduced to 60s from 10s
+    const interval = setInterval(checkReminders, 60000); // Check every 60s (30-min window ensures no missed reminders)
     checkReminders(); // Run immediately on mount
     return () => clearInterval(interval);
   }, [events, user]);
