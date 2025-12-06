@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Invoice, InvoiceItem, DocumentType, InvoiceStatus, Client, Project } from '../types';
 import { Plus, Printer, Eye, Trash2, Edit2, ArrowLeft, Download, FileText, Users, Mail, Sparkles, Loader2, ExternalLink, Paperclip, X, Search, AlertCircle, ArrowRightCircle, Briefcase, Archive, Filter, CheckCircle, Globe, CreditCard, Building, User, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -154,18 +154,18 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
     setView('PREVIEW');
   };
 
-  // Logic to calculate final totals based on all financials
-  const calculateFinancials = () => {
+  // Memoized financial calculations for better performance
+  const financials = useMemo(() => {
       const subtotal = currentInvoice.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
       const discountAmount = currentInvoice.discount || 0;
       const taxableAmount = Math.max(0, subtotal - discountAmount);
       const taxAmount = taxableAmount * ((currentInvoice.taxRate || 0) / 100);
       const total = taxableAmount + taxAmount;
       return { subtotal, total };
-  };
+  }, [currentInvoice.items, currentInvoice.discount, currentInvoice.taxRate]);
 
   const handleSave = () => {
-    const { total } = calculateFinancials();
+    const { total } = financials;
 
     // Save terms as default if present
     if (currentInvoice.notes) {
@@ -295,14 +295,30 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
       }
   };
 
-  const filteredClients = clients.filter(c => 
-    c.status !== 'ARCHIVED' && 
-    (c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) || 
-    c.email.toLowerCase().includes(clientSearchTerm.toLowerCase()))
+  // Memoized filtered data for better performance
+  const filteredClients = useMemo(() => 
+    clients.filter(c => 
+      c.status !== 'ARCHIVED' && 
+      (c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) || 
+      c.email.toLowerCase().includes(clientSearchTerm.toLowerCase()))
+    ),
+    [clients, clientSearchTerm]
   );
-  const activeProjects = projects.filter(p => p.status !== 'ARCHIVED');
-  const filteredInvoices = invoices.filter(inv => !filterProjectId || inv.projectId === filterProjectId);
-  const activeFilterProjectName = filterProjectId ? projects.find(p => p.id === filterProjectId)?.name : null;
+  
+  const activeProjects = useMemo(() => 
+    projects.filter(p => p.status !== 'ARCHIVED'),
+    [projects]
+  );
+  
+  const filteredInvoices = useMemo(() => 
+    invoices.filter(inv => !filterProjectId || inv.projectId === filterProjectId),
+    [invoices, filterProjectId]
+  );
+  
+  const activeFilterProjectName = useMemo(() => 
+    filterProjectId ? projects.find(p => p.id === filterProjectId)?.name : null,
+    [filterProjectId, projects]
+  );
 
   const handleArchiveClient = (inv: Invoice) => {
       const client = clients.find(c => c.email === inv.clientEmail || c.name === inv.clientName);
@@ -376,7 +392,7 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
 
   // --- Sub-Component: Invoice Editor ---
   if (view === 'EDIT') {
-    const { subtotal, total } = calculateFinancials();
+    const { subtotal, total } = financials;
 
     return (
       <div className="max-w-[1400px] mx-auto space-y-6 animate-fadeIn pb-20">
@@ -897,11 +913,10 @@ export const Invoices: React.FC<InvoicesProps> = ({ invoices, clients = [], proj
 
   // --- Print Preview Logic ---
   if (view === 'PREVIEW') {
-     // Recalculate based on saved invoice (which now includes taxRate etc)
-     const subtotal = currentInvoice.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+     // Use memoized financials
+     const { subtotal, total } = financials;
      const discount = currentInvoice.discount || 0;
      const taxAmount = (subtotal - discount) * ((currentInvoice.taxRate || 0) / 100);
-     const total = (subtotal - discount) + taxAmount;
      
      const depositAmount = total * ((currentInvoice.depositPercentage || profile.depositPercentage) / 100);
      const balanceAmount = total - depositAmount;
